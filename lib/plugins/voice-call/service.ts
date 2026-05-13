@@ -1,7 +1,3 @@
-// STUB: voice-call plugin is not installed in this license tier.
-// All functions throw "Plugin not installed" to allow build to pass.
-// Install the voice-call plugin to enable Twilio voice calling features.
-
 const PLUGIN_NOT_INSTALLED = 'voice-call plugin is not installed';
 
 export async function getCreditsBalance(_teamId: number): Promise<number> {
@@ -18,25 +14,19 @@ export async function handleCallStatusUpdate(
   _callSid: string,
   _callStatus: string,
   _callDuration?: number,
-  _recordingUrl?: string,
-  _recordingSid?: string,
-): Promise<void> {
-  // No-op: voice-call plugin not installed
-}
+  _recordingUrl?: string | null,
+  _recordingSid?: string | null,
+): Promise<void> {}
 
 export async function addCredits(
   _teamId: number,
   _amount: number,
-  _stripeSubscriptionId?: string,
-  _description?: string,
-): Promise<void> {
-  // No-op: voice-call plugin not installed
-}
+  _stripeSubscriptionId?: string | null,
+  _description?: string | null,
+): Promise<void> {}
 
 export async function provisionPhoneNumber(
   _teamId: number,
   _phoneNumber: string,
-  _subscriptionId: string,
-): Promise<void> {
-  // No-op: voice-call plugin not installed
-}
+  _subscriptionId: string | null,
+): Promise<void> {}
