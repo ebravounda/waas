@@ -56,7 +56,48 @@ export class OpenAIProvider implements AIProvider {
       }
     }));
 
-    const apiMessages: any[] = [...messages.map(m => {
+    // Sanitize message history to avoid OpenAI 400 error:
+    // "messages with role 'tool' must be a response to a preceding message with 'tool_calls'"
+    // Drop orphan tool messages and assistant.tool_calls that lack a matching tool response.
+    const sanitized: AIMessage[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      if (m.role === 'tool') {
+        // Find the most recent assistant message with matching tool_call_id in sanitized list
+        const matchingAssistantIdx = (() => {
+          for (let j = sanitized.length - 1; j >= 0; j--) {
+            const prev = sanitized[j];
+            if (prev.role === 'assistant' && prev.toolCalls?.some(tc => tc.id === m.toolCallId)) {
+              return j;
+            }
+            // If we hit a user/system message, stop looking (broke the chain)
+            if (prev.role === 'user' || prev.role === 'system') return -1;
+          }
+          return -1;
+        })();
+        if (matchingAssistantIdx === -1) {
+          // Orphan tool message - skip it
+          continue;
+        }
+        sanitized.push(m);
+      } else if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+        // Check that ALL tool_calls in this assistant message have corresponding tool responses
+        // somewhere later in the original messages array
+        const allHaveResponses = m.toolCalls.every(tc =>
+          messages.slice(i + 1).some(later => later.role === 'tool' && later.toolCallId === tc.id)
+        );
+        if (allHaveResponses) {
+          sanitized.push(m);
+        } else {
+          // Strip tool_calls (turn into plain assistant text message) to keep flow consistent
+          sanitized.push({ ...m, toolCalls: undefined, content: m.content || '' });
+        }
+      } else {
+        sanitized.push(m);
+      }
+    }
+
+    const apiMessages: any[] = [...sanitized.map(m => {
         if (m.role === 'tool') {
             return {
                 role: 'tool',
