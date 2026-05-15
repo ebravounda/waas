@@ -42,6 +42,13 @@ export default function RecurringMessagesPage() {
   const { data: instData } = useSWR<any>('/api/instance/list', fetcher);
   const instances: any[] = Array.isArray(instData) ? instData : (instData?.instances || []);
   const [showForm, setShowForm] = useState(false);
+
+  // Auto-pick first instance when none selected and at least one exists
+  useEffect(() => {
+    if (instances.length > 0) {
+      setForm((f: any) => f.instanceId ? f : { ...f, instanceId: instances[0].id });
+    }
+  }, [instances.length]);
   const [form, setForm] = useState<any>(() => ({
     name: '',
     instanceId: null,
@@ -63,6 +70,7 @@ export default function RecurringMessagesPage() {
 
   async function handleSubmit() {
     if (!form.name || !form.messageBody) { toast.error('Nombre y mensaje son obligatorios'); return; }
+    if (!form.instanceId) { toast.error('Seleccioná la instancia de WhatsApp'); return; }
     if (form.scheduleType === 'once' && !form.runOnceAt) {
       toast.error('Selecciona fecha y hora del envío único');
       return;
