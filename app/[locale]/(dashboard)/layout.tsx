@@ -41,8 +41,11 @@ function UserMenu() {
         >
           Pricing
         </Link>
+        <Button asChild variant="ghost" className="rounded-full text-foreground hover:bg-muted">
+          <Link href="/sign-in" data-testid="header-login-btn">Ingresar</Link>
+        </Button>
         <Button asChild className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground">
-          <Link href="/sign-up">Sign Up</Link>
+          <Link href="/sign-up" data-testid="header-signup-btn">Sign Up</Link>
         </Button>
       </>
     );

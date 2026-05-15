@@ -501,6 +501,7 @@ export const aiSessions = pgTable('ai_sessions', {
   chatId: integer('chat_id').notNull().references(() => chats.id, { onDelete: 'cascade' }),
   status: varchar('status', { length: 20 }).default('active'),
   history: jsonb('history').default([]),
+  handoverFallbackSent: boolean('handover_fallback_sent').default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -508,6 +509,37 @@ export const aiSessions = pgTable('ai_sessions', {
 export const aiSessionsRelations = relations(aiSessions, ({ one }) => ({
   chat: one(chats, { fields: [aiSessions.chatId], references: [chats.id] }),
   team: one(teams, { fields: [aiSessions.teamId], references: [teams.id] }),
+}));
+
+// Recurring scheduled messages (e.g., monthly payment reminders)
+export const recurringMessages = pgTable('recurring_messages', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  instanceId: integer('instance_id').references(() => evolutionInstances.id, { onDelete: 'set null' }),
+  name: varchar('name', { length: 100 }).notNull(),
+  scheduleType: varchar('schedule_type', { length: 20 }).notNull(), // 'day_of_month' | 'every_n_days' | 'day_of_week'
+  scheduleValue: integer('schedule_value').notNull(), // 1-31 for day_of_month, 1-7 for day_of_week (1=mon), N for every_n_days
+  sendHour: integer('send_hour').notNull().default(9), // 0-23
+  sendMinute: integer('send_minute').notNull().default(0), // 0-59
+  messageBody: text('message_body').notNull(),
+  mediaUrl: text('media_url'),
+  mediaType: varchar('media_type', { length: 20 }),
+  targetType: varchar('target_type', { length: 20 }).notNull().default('all'), // 'all' | 'tag' | 'funnel'
+  targetValue: text('target_value'), // tag id, funnel stage id, etc
+  delayBetweenMessages: integer('delay_between_messages').default(8), // seconds
+  isActive: boolean('is_active').default(true),
+  lastRunAt: timestamp('last_run_at'),
+  nextRunAt: timestamp('next_run_at'),
+  totalRuns: integer('total_runs').default(0),
+  totalMessagesSent: integer('total_messages_sent').default(0),
+  createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const recurringMessagesRelations = relations(recurringMessages, ({ one }) => ({
+  team: one(teams, { fields: [recurringMessages.teamId], references: [teams.id] }),
+  instance: one(evolutionInstances, { fields: [recurringMessages.instanceId], references: [evolutionInstances.id] }),
 }));
 
 export const aiTools = pgTable('ai_tools', {

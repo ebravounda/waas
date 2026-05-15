@@ -258,9 +258,13 @@ export async function processAIMessage(
                     logAIInteraction({ ..._aiLogBase, eventType: 'ai_tool_call', input: { tool: toolName, args }, output: { result: JSON.stringify(result).substring(0, 500) }, durationMs: Date.now() - _toolStart });
 
                     if (tool.name === 'handover_to_human') {
-                        await db.update(aiSessions).set({ status: 'paused' }).where(eq(aiSessions.id, session.id));
+                        await db.update(aiSessions).set({ status: 'paused', handoverFallbackSent: false }).where(eq(aiSessions.id, session.id));
                         await pusherServer.trigger(`team-${teamId}`, 'chat-status-update', {
                             chatId, type: 'ai', status: 'paused'
+                        });
+                        // Trigger handover-needed alert for dashboard toast
+                        await pusherServer.trigger(`team-${teamId}`, 'handover-needed', {
+                            chatId, reason: args.reason || 'Customer requested human help', timestamp: new Date().toISOString()
                         });
                         const reason = args.reason ? `: ${args.reason}` : '';
                         await createSystemMessage(teamId, chatId, `@@syslog_ai_deactivated|reason=${reason}`);
