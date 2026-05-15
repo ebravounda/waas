@@ -37,7 +37,8 @@ const SCHEDULE_LABELS: Record<string, (v: number) => string> = {
 
 export default function RecurringMessagesPage() {
   const { data, mutate, isLoading } = useSWR<{ rules: Rule[] }>('/api/recurring-messages', fetcher);
-  const { data: instData } = useSWR<{ instances: any[] }>('/api/instance/list', fetcher);
+  const { data: instData } = useSWR<any>('/api/instance/list', fetcher);
+  const instances: any[] = Array.isArray(instData) ? instData : (instData?.instances || []);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({
     name: '',
@@ -102,7 +103,14 @@ export default function RecurringMessagesPage() {
               <Select value={form.instanceId?.toString() || ''} onValueChange={v => setForm({ ...form, instanceId: parseInt(v, 10) })}>
                 <SelectTrigger data-testid="rule-instance-select"><SelectValue placeholder="Selecciona instancia" /></SelectTrigger>
                 <SelectContent>
-                  {(instData?.instances || []).map((i: any) => <SelectItem key={i.dbId || i.id} value={(i.dbId || i.id).toString()}>{i.displayName || i.name}</SelectItem>)}
+                  {instances.map((i: any) => (
+                    <SelectItem key={i.id} value={String(i.id)}>
+                      {i.instanceName || i.displayName || i.name || `Instancia #${i.id}`}
+                    </SelectItem>
+                  ))}
+                  {instances.length === 0 && (
+                    <SelectItem value="0" disabled>No hay instancias configuradas</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -18,6 +18,7 @@ import useSWR, { mutate } from 'swr';
 import { Sidebar } from '@/components/interface/Sidebar';
 import Logo from '@/components/interface/Logo';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { HandoverBell } from '@/components/dashboard/HandoverBell';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -92,6 +93,9 @@ function UserMenu() {
 
 function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const { data: team } = useSWR<any>('/api/team', fetcher);
+  const teamId = team?.id;
 
   return (
     <header className="border-b border-border bg-background sticky top-0 z-50">
@@ -101,6 +105,7 @@ function Header() {
         </Link>
         
         <div className="hidden md:flex items-center space-x-4">
+          {user && teamId && <HandoverBell teamId={teamId} />}
           <ThemeSwitcher />
           <Suspense fallback={<div className="h-9 w-9 bg-muted rounded-full animate-pulse" />}>
             <UserMenu />
@@ -109,6 +114,7 @@ function Header() {
 
 
         <div className="md:hidden flex items-center gap-4">
+            {user && teamId && <HandoverBell teamId={teamId} />}
             <ThemeSwitcher />
             <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                 {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -157,6 +163,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-muted overflow-hidden">
       <Sidebar />
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+        {team && typeof team === 'object' && 'id' in team && (
+          <div className="absolute top-3 right-4 z-40">
+            <HandoverBell teamId={(team as any).id} />
+          </div>
+        )}
         {children}
       </main>
     </div>
