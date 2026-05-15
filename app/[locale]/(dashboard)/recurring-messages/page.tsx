@@ -17,7 +17,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json());
 type Rule = {
   id: number;
   name: string;
-  scheduleType: 'day_of_month' | 'every_n_days' | 'day_of_week';
+  scheduleType: 'day_of_month' | 'every_n_days' | 'day_of_week' | 'once';
   scheduleValue: number;
   sendHour: number;
   sendMinute: number;
@@ -33,6 +33,7 @@ const SCHEDULE_LABELS: Record<string, (v: number) => string> = {
   day_of_month: v => `Día ${v} de cada mes`,
   every_n_days: v => `Cada ${v} día${v === 1 ? '' : 's'}`,
   day_of_week: v => ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][v - 1] || `Día ${v}`,
+  once: () => 'Envío único',
 };
 
 export default function RecurringMessagesPage() {
@@ -43,8 +44,9 @@ export default function RecurringMessagesPage() {
   const [form, setForm] = useState<any>({
     name: '',
     instanceId: null,
-    scheduleType: 'day_of_month',
+    scheduleType: 'once',
     scheduleValue: 1,
+    runOnceAt: '',
     sendHour: 9,
     sendMinute: 0,
     messageBody: 'Hola {{nombre}}, te recordamos que tu pago vence pronto. ¡Gracias!',
@@ -56,6 +58,10 @@ export default function RecurringMessagesPage() {
 
   async function handleSubmit() {
     if (!form.name || !form.messageBody) { toast.error('Nombre y mensaje son obligatorios'); return; }
+    if (form.scheduleType === 'once' && !form.runOnceAt) {
+      toast.error('Selecciona fecha y hora del envío único');
+      return;
+    }
     const res = await fetch('/api/recurring-messages', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -83,8 +89,8 @@ export default function RecurringMessagesPage() {
     <div className="container mx-auto p-6 max-w-5xl space-y-6" data-testid="recurring-messages-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Calendar className="w-6 h-6" /> Mensajes Recurrentes</h1>
-          <p className="text-muted-foreground text-sm">Programa mensajes automáticos: recordatorios de pago, newsletters, seguimientos.</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Calendar className="w-6 h-6" /> Mensajes Programados</h1>
+          <p className="text-muted-foreground text-sm">Envíos únicos en fecha y hora específica, o recurrentes (día del mes, cada N días, día de la semana).</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} data-testid="new-rule-btn">
           <Plus className="w-4 h-4 mr-2" /> Nueva regla
@@ -116,27 +122,42 @@ export default function RecurringMessagesPage() {
             </div>
             <div>
               <Label>Tipo de programación</Label>
-              <Select value={form.scheduleType} onValueChange={v => setForm({ ...form, scheduleType: v, scheduleValue: 1 })}>
+              <Select value={form.scheduleType} onValueChange={v => setForm({ ...form, scheduleType: v, scheduleValue: v === 'once' ? 0 : 1 })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="once">Una sola vez</SelectItem>
                   <SelectItem value="day_of_month">Día específico del mes</SelectItem>
                   <SelectItem value="every_n_days">Cada N días</SelectItem>
                   <SelectItem value="day_of_week">Día de la semana</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Valor</Label>
-              <Input type="number" min={1} max={form.scheduleType === 'day_of_week' ? 7 : 31} value={form.scheduleValue} onChange={e => setForm({ ...form, scheduleValue: parseInt(e.target.value, 10) || 1 })} />
-            </div>
-            <div>
-              <Label>Hora envío (24h)</Label>
-              <div className="flex gap-2">
-                <Input type="number" min={0} max={23} value={form.sendHour} onChange={e => setForm({ ...form, sendHour: parseInt(e.target.value, 10) || 0 })} />
-                <span className="self-center">:</span>
-                <Input type="number" min={0} max={59} value={form.sendMinute} onChange={e => setForm({ ...form, sendMinute: parseInt(e.target.value, 10) || 0 })} />
+            {form.scheduleType === 'once' ? (
+              <div>
+                <Label>Fecha y hora del envío</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.runOnceAt}
+                  onChange={e => setForm({ ...form, runOnceAt: e.target.value })}
+                  data-testid="rule-runonce-input"
+                />
               </div>
-            </div>
+            ) : (
+              <div>
+                <Label>Valor</Label>
+                <Input type="number" min={1} max={form.scheduleType === 'day_of_week' ? 7 : 31} value={form.scheduleValue} onChange={e => setForm({ ...form, scheduleValue: parseInt(e.target.value, 10) || 1 })} />
+              </div>
+            )}
+            {form.scheduleType !== 'once' && (
+              <div>
+                <Label>Hora envío (24h)</Label>
+                <div className="flex gap-2">
+                  <Input type="number" min={0} max={23} value={form.sendHour} onChange={e => setForm({ ...form, sendHour: parseInt(e.target.value, 10) || 0 })} />
+                  <span className="self-center">:</span>
+                  <Input type="number" min={0} max={59} value={form.sendMinute} onChange={e => setForm({ ...form, sendMinute: parseInt(e.target.value, 10) || 0 })} />
+                </div>
+              </div>
+            )}
             <div>
               <Label>Delay entre mensajes (seg)</Label>
               <Input type="number" min={1} value={form.delayBetweenMessages} onChange={e => setForm({ ...form, delayBetweenMessages: parseInt(e.target.value, 10) || 8 })} />

@@ -9,6 +9,10 @@ function computeNextRun(rule: any, from: Date = new Date()): Date {
   const next = new Date(from);
   next.setSeconds(0, 0);
   next.setHours(rule.sendHour ?? 9, rule.sendMinute ?? 0, 0, 0);
+  if (rule.scheduleType === 'once') {
+    // For one-time messages, scheduleValue is ignored — use runOnceAt directly
+    return rule.runOnceAt ? new Date(rule.runOnceAt) : from;
+  }
   if (rule.scheduleType === 'day_of_month') {
     const targetDay = Math.min(Math.max(rule.scheduleValue, 1), 31);
     if (next.getDate() < targetDay || (next.getDate() === targetDay && next <= from)) {
@@ -50,16 +54,28 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const { name, instanceId, scheduleType, scheduleValue, sendHour, sendMinute,
-    messageBody, mediaUrl, mediaType, targetType, targetValue, delayBetweenMessages, isActive } = body;
+    messageBody, mediaUrl, mediaType, targetType, targetValue, delayBetweenMessages, isActive, runOnceAt } = body;
 
-  if (!name || !scheduleType || scheduleValue == null || !messageBody) {
+  if (!name || !scheduleType || !messageBody) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
-  if (!['day_of_month', 'every_n_days', 'day_of_week'].includes(scheduleType)) {
+  if (!['day_of_month', 'every_n_days', 'day_of_week', 'once'].includes(scheduleType)) {
     return NextResponse.json({ error: 'Invalid scheduleType' }, { status: 400 });
   }
+  if (scheduleType === 'once' && !runOnceAt) {
+    return NextResponse.json({ error: 'runOnceAt required for one-time messages' }, { status: 400 });
+  }
+  if (scheduleType !== 'once' && (scheduleValue == null)) {
+    return NextResponse.json({ error: 'scheduleValue required' }, { status: 400 });
+  }
 
-  const ruleData = { sendHour: sendHour ?? 9, sendMinute: sendMinute ?? 0, scheduleType, scheduleValue };
+  const ruleData = {
+    sendHour: sendHour ?? 9,
+    sendMinute: sendMinute ?? 0,
+    scheduleType,
+    scheduleValue: scheduleType === 'once' ? 0 : scheduleValue,
+    runOnceAt: scheduleType === 'once' ? new Date(runOnceAt) : null,
+  };
   const nextRunAt = computeNextRun(ruleData);
 
   const [created] = await db.insert(recurringMessages).values({
@@ -67,7 +83,7 @@ export async function POST(request: Request) {
     instanceId: instanceId || null,
     name,
     scheduleType,
-    scheduleValue,
+    scheduleValue: ruleData.scheduleValue,
     sendHour: sendHour ?? 9,
     sendMinute: sendMinute ?? 0,
     messageBody,

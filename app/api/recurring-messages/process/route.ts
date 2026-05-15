@@ -156,18 +156,20 @@ async function handle(request: Request) {
         }
       }
 
-      const nextRun = computeNextRun(rule, now);
+      const isOnce = rule.scheduleType === 'once';
+      const nextRun = isOnce ? null : computeNextRun(rule, now);
       await db.update(recurringMessages)
         .set({
           lastRunAt: now,
           nextRunAt: nextRun,
+          isActive: isOnce ? false : rule.isActive,
           totalRuns: (rule.totalRuns || 0) + 1,
           totalMessagesSent: (rule.totalMessagesSent || 0) + sent,
         })
         .where(eq(recurringMessages.id, rule.id));
 
       totalSent += sent;
-      results.push({ ruleId: rule.id, name: rule.name, sent, errors, nextRunAt: nextRun.toISOString() });
+      results.push({ ruleId: rule.id, name: rule.name, sent, errors, nextRunAt: nextRun ? nextRun.toISOString() : null, once: isOnce });
     } catch (err: any) {
       results.push({ ruleId: rule.id, error: err.message });
     }
