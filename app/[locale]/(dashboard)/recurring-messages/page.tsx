@@ -252,7 +252,13 @@ export default function RecurringMessagesPage() {
                     {rule.isActive ? 'Activa' : 'Pausada'}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {SCHEDULE_LABELS[rule.scheduleType]?.(rule.scheduleValue) || rule.scheduleType} a las {String(rule.sendHour).padStart(2, '0')}:{String(rule.sendMinute).padStart(2, '0')}</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  {rule.scheduleType === 'once'
+                    ? `Envío único: ${rule.nextRunAt ? new Date(rule.nextRunAt).toLocaleString() : '—'}`
+                    : `${SCHEDULE_LABELS[rule.scheduleType]?.(rule.scheduleValue) || rule.scheduleType} a las ${String(rule.sendHour).padStart(2, '0')}:${String(rule.sendMinute).padStart(2, '0')}`
+                  }
+                </p>
                 <p className="text-sm mt-2 line-clamp-2 italic">"{rule.messageBody.substring(0, 120)}{rule.messageBody.length > 120 ? '…' : ''}"</p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Próximo envío: {rule.nextRunAt ? new Date(rule.nextRunAt).toLocaleString() : '—'}
