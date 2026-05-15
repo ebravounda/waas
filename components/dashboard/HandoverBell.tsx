@@ -22,11 +22,20 @@ export function HandoverBell({ teamId }: { teamId?: number | null }) {
 
     const onHandover = () => mutate();
     const onStatusUpdate = () => mutate();
+    const onUnattended = (payload: any) => {
+      mutate();
+      // Persistent visual cue in panel: keep last unattended chat id in window for now.
+      try {
+        (window as any).__lastUnattendedHandover = payload;
+      } catch {}
+    };
     channel.bind('handover-needed', onHandover);
     channel.bind('chat-status-update', onStatusUpdate);
+    channel.bind('handover-unattended', onUnattended);
     return () => {
       channel.unbind('handover-needed', onHandover);
       channel.unbind('chat-status-update', onStatusUpdate);
+      channel.unbind('handover-unattended', onUnattended);
     };
   }, [teamId, mutate]);
 

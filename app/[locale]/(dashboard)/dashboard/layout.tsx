@@ -280,14 +280,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       mutate('/api/chats');
     };
 
+    const handleHandoverUnattended = (payload: any) => {
+      playNotificationSoundRef.current();
+      toast.error('⚠️ Chat sin atender — IA reactivada', {
+        description: `Nadie respondió en ${payload?.minutes || 5} min. El bot retomó la conversación.`,
+        duration: 15000,
+        action: payload?.chatId ? {
+          label: 'Ver chat',
+          onClick: () => {
+            if (payload.chatId) window.location.href = `/dashboard/chat/${payload.chatId}`;
+          },
+        } : undefined,
+      });
+      mutate('/api/chats');
+    };
+
     channel.bind('chat-list-update', handleChatListUpdate);
     channel.bind('new-message', handleNewMessage);
     channel.bind('handover-needed', handleHandoverNeeded);
+    channel.bind('handover-unattended', handleHandoverUnattended);
 
     return () => {
       channel.unbind('chat-list-update', handleChatListUpdate);
       channel.unbind('new-message', handleNewMessage);
       channel.unbind('handover-needed', handleHandoverNeeded);
+      channel.unbind('handover-unattended', handleHandoverUnattended);
     };
   }, [teamId, mutate]);
 
