@@ -102,12 +102,18 @@ export class OpenAIProvider implements AIProvider {
             return {
                 role: 'tool',
                 tool_call_id: m.toolCallId,
-                content: m.content
+                content: typeof m.content === 'string' ? m.content : ''
             };
         }
+        // OpenAI only allows null content on assistant messages WITH tool_calls.
+        // For user/system, and assistants without tool_calls, content MUST be a string.
+        const hasToolCalls = m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0;
+        const safeContent = (m.content === null || m.content === undefined)
+            ? (hasToolCalls ? null : '')
+            : m.content;
         return {
             role: m.role,
-            content: m.content,
+            content: safeContent,
             tool_calls: m.toolCalls 
         };
     })];

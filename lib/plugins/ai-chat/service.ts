@@ -210,13 +210,21 @@ export async function processAIMessage(
       }
   }
 
-  const history = (session.history as AIMessage[]) || [];
-  
+  // Heal any toxic history entries (user/system messages with null/undefined content)
+  // OpenAI rejects null content on non-assistant messages.
+  const history = ((session.history as AIMessage[]) || []).map(m => {
+      if (m.role === 'assistant') return m;
+      if (m.content === null || m.content === undefined) {
+          return { ...m, content: '' };
+      }
+      return m;
+  });
+
   if (history.length === 0 && config.systemPrompt && config.provider === 'openai') {
       history.push({ role: 'system', content: config.systemPrompt });
   }
 
-  const contentPayload = finalInput || (audioUrl ? "Please listen to this audio and execute any commands requested in it." : "");
+  const contentPayload = (finalInput && finalInput.trim()) || (audioUrl ? "Please listen to this audio and execute any commands requested in it." : "");
 
   history.push({ 
       role: 'user', 
