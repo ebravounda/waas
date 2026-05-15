@@ -73,7 +73,7 @@ async function handleRequest(request: Request) {
   for (const s of pausedSessions) {
     processed++;
     try {
-      // Has a human agent replied since the pause? (Exclude AI's own messages)
+      // Has a human agent replied since the pause? (Exclude AI's own messages and internal system logs)
       const pausedAtIso = s.pausedAt instanceof Date ? s.pausedAt.toISOString() : String(s.pausedAt);
       const humanReply = await db
         .select({ id: messages.id })
@@ -83,6 +83,7 @@ async function handleRequest(request: Request) {
             eq(messages.chatId, s.chatId),
             eq(messages.fromMe, true),
             eq(messages.isAi, false),
+            eq(messages.isInternal, false),
             sql`${messages.timestamp} > ${pausedAtIso}::timestamp`
           )
         )

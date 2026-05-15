@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { Bell } from 'lucide-react';
 import { getTeamChannel } from '@/lib/pusher-client';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
+const DISMISS_KEY = 'handover-bell-dismissed-at';
 
 export function HandoverBell({ teamId }: { teamId?: number | null }) {
   const { data, mutate } = useSWR<{ count: number }>(
@@ -15,41 +16,57 @@ export function HandoverBell({ teamId }: { teamId?: number | null }) {
     { refreshInterval: 30000, revalidateOnFocus: true }
   );
 
-  // "Acknowledged" count — hides badge optimistically when user clicks.
-  // A new Pusher event resets this so new alerts are always visible.
-  const [acknowledged, setAcknowledged] = useState(0);
+  // Last server count snapshot when user dismissed the bell.
+  // Persisted to localStorage so it survives navigation/refresh.
+  const [dismissedAtCount, setDismissedAtCount] = useState<number>(-1);
+
+  // Load persisted dismissal on mount
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(DISMISS_KEY);
+      if (v != null) setDismissedAtCount(parseInt(v, 10));
+    } catch {}
+  }, []);
+
+  const dismiss = useCallback((count: number) => {
+    setDismissedAtCount(count);
+    try { localStorage.setItem(DISMISS_KEY, String(count)); } catch {}
+  }, []);
+
+  const reset = useCallback(() => {
+    setDismissedAtCount(-1);
+    try { localStorage.removeItem(DISMISS_KEY); } catch {}
+  }, []);
 
   useEffect(() => {
     if (!teamId) return;
     const channel = getTeamChannel(teamId);
     if (!channel) return;
 
-    const onHandover = () => {
-      setAcknowledged(0); // new alert — show badge again
+    const onNewAlert = () => {
+      reset(); // new handover — always show
       mutate();
     };
     const onStatusUpdate = () => mutate();
-    const onUnattended = () => {
-      setAcknowledged(0);
-      mutate();
-    };
-    channel.bind('handover-needed', onHandover);
+
+    channel.bind('handover-needed', onNewAlert);
     channel.bind('chat-status-update', onStatusUpdate);
-    channel.bind('handover-unattended', onUnattended);
+    channel.bind('handover-unattended', onNewAlert);
     return () => {
-      channel.unbind('handover-needed', onHandover);
+      channel.unbind('handover-needed', onNewAlert);
       channel.unbind('chat-status-update', onStatusUpdate);
-      channel.unbind('handover-unattended', onUnattended);
+      channel.unbind('handover-unattended', onNewAlert);
     };
-  }, [teamId, mutate]);
+  }, [teamId, mutate, reset]);
 
   const serverCount = data?.count ?? 0;
-  const visibleCount = Math.max(0, serverCount - acknowledged);
-  const hasPending = visibleCount > 0;
+  // Bell stays clean as long as the unattended count hasn't GROWN past
+  // the snapshot the user already saw/dismissed.
+  const hasPending = serverCount > 0 && serverCount > dismissedAtCount;
+  const visibleCount = hasPending ? serverCount : 0;
 
   const handleClick = () => {
-    // Optimistically dismiss the badge — user is going to dashboard to handle it
-    setAcknowledged(serverCount);
+    dismiss(serverCount);
   };
 
   return (
