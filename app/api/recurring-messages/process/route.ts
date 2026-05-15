@@ -39,11 +39,12 @@ function computeNextRun(rule: any, from: Date = new Date()): Date {
 }
 
 function interpolate(text: string, contact: any): string {
+  const phoneFromJid = contact.remoteJid ? String(contact.remoteJid).split('@')[0] : '';
   return text
     .replace(/\{\{nombre\}\}/gi, contact.name || contact.pushName || 'amigo')
     .replace(/\{\{name\}\}/gi, contact.name || contact.pushName || 'friend')
-    .replace(/\{\{telefono\}\}/gi, contact.phone || '')
-    .replace(/\{\{email\}\}/gi, contact.email || '');
+    .replace(/\{\{telefono\}\}/gi, phoneFromJid)
+    .replace(/\{\{phone\}\}/gi, phoneFromJid);
 }
 
 /**
@@ -126,7 +127,7 @@ export async function GET(request: Request) {
       const delayMs = (rule.delayBetweenMessages || 8) * 1000;
 
       for (const c of targetContacts) {
-        const jid = c.remoteJid || (c.phone ? `${c.phone.replace(/\D/g, '')}@s.whatsapp.net` : null);
+        const jid = c.remoteJid || null;
         if (!jid) continue;
         try {
           const text = interpolate(rule.messageBody, c);
