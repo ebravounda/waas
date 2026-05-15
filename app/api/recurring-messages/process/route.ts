@@ -54,7 +54,10 @@ function interpolate(text: string, contact: any): string {
  *
  * Crontab: * * * * * curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/recurring-messages/process > /dev/null
  */
-export async function GET(request: Request) {
+export async function GET(request: Request) { return handle(request); }
+export async function POST(request: Request) { return handle(request); }
+
+async function handle(request: Request) {
   const auth = request.headers.get('authorization');
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

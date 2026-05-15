@@ -74,6 +74,7 @@ async function handleRequest(request: Request) {
     processed++;
     try {
       // Has a human agent replied since the pause?
+      const pausedAtIso = s.pausedAt instanceof Date ? s.pausedAt.toISOString() : String(s.pausedAt);
       const humanReply = await db
         .select({ id: messages.id })
         .from(messages)
@@ -81,7 +82,7 @@ async function handleRequest(request: Request) {
           and(
             eq(messages.chatId, s.chatId),
             eq(messages.fromMe, true),
-            sql`${messages.timestamp} > ${s.pausedAt}`
+            sql`${messages.timestamp} > ${pausedAtIso}::timestamp`
           )
         )
         .limit(1);
