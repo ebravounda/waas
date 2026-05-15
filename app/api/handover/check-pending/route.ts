@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { aiSessions, chats, messages, evolutionInstances } from '@/lib/db/schema';
 import { eq, and, lt, sql } from 'drizzle-orm';
-import { getProvider } from '@/lib/whatsapp/provider-factory';
+import { getWhatsAppProvider } from '@/lib/whatsapp/provider-factory';
 
 /**
  * Cron endpoint: checks for paused AI sessions (after handover_to_human)
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       if (!instance.length) continue;
 
       // Send fallback message via the appropriate provider
-      const provider = await getProvider(instance[0] as any);
+      const provider = await getWhatsAppProvider(instance[0] as any);
       await provider.sendText(chatInfo[0].remoteJid, { text: FALLBACK_MESSAGE });
 
       // Mark fallback as sent

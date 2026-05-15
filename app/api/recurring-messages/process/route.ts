@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { recurringMessages, contacts, chats, evolutionInstances } from '@/lib/db/schema';
 import { eq, and, lte, sql, isNotNull } from 'drizzle-orm';
-import { getProvider } from '@/lib/whatsapp/provider-factory';
+import { getWhatsAppProvider } from '@/lib/whatsapp/provider-factory';
 
 /**
  * Computes the next run timestamp based on schedule pattern.
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       if (!rule.instanceId) continue;
       const instanceArr = await db.select().from(evolutionInstances).where(eq(evolutionInstances.id, rule.instanceId)).limit(1);
       if (!instanceArr.length) continue;
-      const provider = await getProvider(instanceArr[0] as any);
+      const provider = await getWhatsAppProvider(instanceArr[0] as any);
 
       // Get target contacts
       let targetContacts: any[] = [];
