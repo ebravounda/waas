@@ -273,21 +273,27 @@ export async function processAIMessage(
                         // Optional: notify admin via WhatsApp if HANDOVER_NOTIFY_ADMIN_PHONE is configured
                         try {
                           const adminPhone = process.env.HANDOVER_NOTIFY_ADMIN_PHONE;
-                          if (adminPhone && instance?.accessToken && instance?.instanceName) {
-                            const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
-                            const link = baseUrl ? `\n\nAbrir → ${baseUrl}/dashboard/chat/${chatId}` : '';
-                            const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}\nChat ID: ${chatId}${link}`;
-                            await fetch(`${EVOLUTION_API_URL}/message/sendText/${instance.instanceName}`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', 'apikey': instance.accessToken },
-                              body: JSON.stringify({
-                                number: String(adminPhone).replace(/\D/g, ''),
-                                text: notifyText,
-                                delay: 500,
-                                linkPreview: false
-                              }),
-                              signal: AbortSignal.timeout(10000)
-                            }).catch((e) => console.error('[handover] notify fetch failed:', e?.message));
+                          if (adminPhone) {
+                            const chatRow = await db.query.chats.findFirst({ where: eq(chats.id, chatId) });
+                            const instanceRow = chatRow?.instanceId
+                              ? await db.query.evolutionInstances.findFirst({ where: eq(evolutionInstances.id, chatRow.instanceId) })
+                              : null;
+                            if (instanceRow?.accessToken && instanceRow?.instanceName) {
+                              const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+                              const link = baseUrl ? `\n\nAbrir → ${baseUrl}/dashboard/chat/${chatId}` : '';
+                              const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}\nChat ID: ${chatId}${link}`;
+                              await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceRow.instanceName}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'apikey': instanceRow.accessToken },
+                                body: JSON.stringify({
+                                  number: String(adminPhone).replace(/\D/g, ''),
+                                  text: notifyText,
+                                  delay: 500,
+                                  linkPreview: false
+                                }),
+                                signal: AbortSignal.timeout(10000)
+                              }).catch((e) => console.error('[handover] notify fetch failed:', e?.message));
+                            }
                           }
                         } catch (notifyErr: any) {
                           console.error('[handover] failed to notify admin:', notifyErr?.message);
