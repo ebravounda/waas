@@ -270,18 +270,27 @@ export async function processAIMessage(
                         await createSystemMessage(teamId, chatId, `@@syslog_ai_deactivated|reason=${reason}`);
                         logAIInteraction({ ..._aiLogBase, eventType: 'ai_handover', metadata: { reason: args.reason } });
 
-                        // Optional: notify admin via WhatsApp if HANDOVER_NOTIFY_ADMIN_JID is configured
+                        // Optional: notify admin via WhatsApp if HANDOVER_NOTIFY_ADMIN_PHONE is configured
                         try {
-                          const adminJid = process.env.HANDOVER_NOTIFY_ADMIN_JID;
-                          if (adminJid && instance) {
-                            const { getProvider } = await import('@/lib/whatsapp/provider-factory');
-                            const provider = await getProvider(instance as any);
-                            const baseUrl = process.env.BASE_URL || 'https://mitiendapro.com';
-                            const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}\nChat ID: ${chatId}\n\nAbrir → ${baseUrl}/dashboard/chat/${chatId}`;
-                            await provider.sendText(adminJid, { text: notifyText });
+                          const adminPhone = process.env.HANDOVER_NOTIFY_ADMIN_PHONE;
+                          if (adminPhone && instance?.accessToken && instance?.instanceName) {
+                            const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+                            const link = baseUrl ? `\n\nAbrir → ${baseUrl}/dashboard/chat/${chatId}` : '';
+                            const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}\nChat ID: ${chatId}${link}`;
+                            await fetch(`${EVOLUTION_API_URL}/message/sendText/${instance.instanceName}`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'apikey': instance.accessToken },
+                              body: JSON.stringify({
+                                number: String(adminPhone).replace(/\D/g, ''),
+                                text: notifyText,
+                                delay: 500,
+                                linkPreview: false
+                              }),
+                              signal: AbortSignal.timeout(10000)
+                            }).catch((e) => console.error('[handover] notify fetch failed:', e?.message));
                           }
                         } catch (notifyErr: any) {
-                          console.error('[handover] failed to notify admin:', notifyErr.message);
+                          console.error('[handover] failed to notify admin:', notifyErr?.message);
                         }
                     }
 
