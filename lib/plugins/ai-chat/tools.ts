@@ -98,12 +98,13 @@ async function sendMediaToEvolution(
 const baseTools: ToolDefinition[] = [
   {
     name: 'handover_to_human',
-    description: 'Transfers the conversation to a human agent and stops the AI.',
+    description: 'MUST be called whenever the user requests to speak with a human, a real person, an agent, an advisor, a representative, customer service, support, or expresses frustration, anger, complaints, or asks about things you cannot answer (refunds, complex pricing negotiations, account-specific actions, complaints, cancellations, escalations). Also call it whenever the user explicitly says they do not want to talk to a bot/AI. Always pass a brief "reason" describing why the transfer is needed.',
     parameters: {
       type: 'object',
       properties: {
-        reason: { type: 'string', description: 'Reason for transfer' }
-      }
+        reason: { type: 'string', description: 'Short reason for transferring (e.g. "user requested human", "complaint about delivery", "refund request").' }
+      },
+      required: ['reason']
     },
     execute: async (args, context) => {
        return { success: true, message: "Transferred to human" };

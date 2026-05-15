@@ -16,10 +16,12 @@ export class GeminiProvider implements AIProvider {
     this.attachments = config.attachments || [];
     
     const audioInstruction = "IMPORTANT: You have multimodal capabilities. When you receive an AUDIO file, you must LISTEN to it and extract the user's intent. If the user asks for something in the audio (like a menu, catalog, or action), CALL THE APPROPRIATE TOOL immediately. Do not ask for transcription.";
-    
+
+    const toolUsageInstruction = "TOOLS POLICY: You have access to tools/functions. Use them PROACTIVELY whenever appropriate. In particular: if the user requests to speak with a human, a real person, an agent, support, an advisor; if they express frustration, anger, complaints; if they ask for a refund, cancellation, escalation, account-specific changes; or if you cannot help — you MUST call the `handover_to_human` tool with a short `reason`. Do not ask the user for confirmation, do not say 'transferring you', just call the tool.";
+
     this.systemPrompt = config.systemPrompt 
-        ? `${config.systemPrompt}\n\n${audioInstruction}` 
-        : audioInstruction;
+        ? `${config.systemPrompt}\n\n${toolUsageInstruction}\n\n${audioInstruction}` 
+        : `${toolUsageInstruction}\n\n${audioInstruction}`;
 
     this.config = {
         temperature: config.temperature ?? 0.7,
