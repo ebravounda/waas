@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Calendar, Clock, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import { ContactPicker, type PickedContact } from '@/components/recurring-messages/ContactPicker';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
@@ -50,8 +51,11 @@ export default function RecurringMessagesPage() {
     sendHour: 9,
     sendMinute: 0,
     messageBody: 'Hola {{nombre}}, te recordamos que tu pago vence pronto. ¡Gracias!',
-    targetType: 'all',
+    mediaUrl: '',
+    mediaType: '',
+    targetType: 'contacts',
     targetValue: '',
+    pickedContacts: [] as PickedContact[],
     delayBetweenMessages: 8,
     isActive: true,
   });
@@ -62,9 +66,18 @@ export default function RecurringMessagesPage() {
       toast.error('Selecciona fecha y hora del envío único');
       return;
     }
+    if (form.targetType === 'contacts' && (!form.pickedContacts || form.pickedContacts.length === 0)) {
+      toast.error('Seleccioná al menos un contacto');
+      return;
+    }
+    const payload: any = { ...form };
+    if (form.targetType === 'contacts') {
+      payload.targetValue = JSON.stringify(form.pickedContacts);
+    }
+    delete payload.pickedContacts;
     const res = await fetch('/api/recurring-messages', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     if (res.ok) { toast.success('Regla creada'); setShowForm(false); mutate(); }
     else { const e = await res.json(); toast.error(e.error || 'Error al crear'); }
@@ -164,25 +177,57 @@ export default function RecurringMessagesPage() {
             </div>
             <div>
               <Label>Destinatarios</Label>
-              <Select value={form.targetType} onValueChange={v => setForm({ ...form, targetType: v, targetValue: '' })}>
+              <Select value={form.targetType} onValueChange={v => setForm({ ...form, targetType: v, targetValue: '', pickedContacts: [] })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="contacts">Contactos específicos</SelectItem>
                   <SelectItem value="all">Todos los contactos</SelectItem>
                   <SelectItem value="tag">Por etiqueta (tag id)</SelectItem>
                   <SelectItem value="funnel">Por etapa funnel (id)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {form.targetType !== 'all' && (
+            {form.targetType === 'tag' || form.targetType === 'funnel' ? (
               <div>
                 <Label>ID de etiqueta o funnel</Label>
                 <Input value={form.targetValue} onChange={e => setForm({ ...form, targetValue: e.target.value })} placeholder="Ej: 1" />
               </div>
-            )}
+            ) : null}
           </div>
+          {form.targetType === 'contacts' && (
+            <div>
+              <Label>Seleccionar contactos</Label>
+              <ContactPicker
+                value={form.pickedContacts}
+                onChange={(next) => setForm({ ...form, pickedContacts: next })}
+              />
+            </div>
+          )}
           <div>
-            <Label>Mensaje (variables: {'{{nombre}}'}, {'{{telefono}}'}, {'{{email}}'})</Label>
+            <Label>Mensaje (variables: {'{{nombre}}'}, {'{{telefono}}'})</Label>
             <Textarea rows={4} value={form.messageBody} onChange={e => setForm({ ...form, messageBody: e.target.value })} data-testid="rule-message-input" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <Label>Archivo adjunto (URL pública opcional)</Label>
+              <Input
+                placeholder="https://...../imagen.jpg ó .../documento.pdf"
+                value={form.mediaUrl}
+                onChange={e => setForm({ ...form, mediaUrl: e.target.value })}
+                data-testid="rule-media-url-input"
+              />
+            </div>
+            <div>
+              <Label>Tipo de archivo</Label>
+              <Select value={form.mediaType || ''} onValueChange={v => setForm({ ...form, mediaType: v })}>
+                <SelectTrigger><SelectValue placeholder="Sin archivo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="image">Imagen</SelectItem>
+                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="document">PDF / Documento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>

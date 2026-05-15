@@ -121,6 +121,24 @@ async function handle(request: Request) {
           .from(contacts)
           .leftJoin(chats, eq(contacts.chatId, chats.id))
           .where(and(eq(contacts.teamId, rule.teamId), eq(contacts.funnelStageId, parseInt(rule.targetValue, 10))));
+      } else if (rule.targetType === 'contacts' && rule.targetValue) {
+        // targetValue is a JSON array of items: { remoteJid?: string, phone?: string, name?: string }
+        let items: Array<{ remoteJid?: string; phone?: string; name?: string }> = [];
+        try { items = JSON.parse(rule.targetValue); } catch { items = []; }
+        targetContacts = items.map((it) => {
+          const jid = it.remoteJid
+            ? it.remoteJid
+            : it.phone
+              ? `${String(it.phone).replace(/\D/g, '')}@s.whatsapp.net`
+              : '';
+          return {
+            id: null,
+            name: it.name || '',
+            pushName: null,
+            chatId: null,
+            remoteJid: jid,
+          };
+        }).filter((c: any) => !!c.remoteJid);
       }
 
       const delayMs = (rule.delayBetweenMessages || 8) * 1000;
