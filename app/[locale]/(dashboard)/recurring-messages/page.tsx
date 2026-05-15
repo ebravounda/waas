@@ -72,6 +72,11 @@ export default function RecurringMessagesPage() {
       return;
     }
     const payload: any = { ...form };
+    // Convert datetime-local string (no TZ) to a real ISO string in browser's TZ
+    // so the server stores the user's intended local moment correctly.
+    if (form.scheduleType === 'once' && form.runOnceAt) {
+      payload.runOnceAt = new Date(form.runOnceAt).toISOString();
+    }
     if (form.targetType === 'contacts') {
       payload.targetValue = JSON.stringify(form.pickedContacts);
     }
