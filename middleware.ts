@@ -10,7 +10,18 @@ const intlMiddleware = createMiddleware({
   localePrefix: 'as-needed' 
 });
 
-const protectedRoutes = ['/dashboard', '/admin'];
+const protectedRoutes = [
+  '/dashboard',
+  '/admin',
+  '/settings',
+  '/contacts',
+  '/automation',
+  '/templates',
+  '/campaigns',
+  '/analytics',
+  '/calls',
+  '/recurring-messages',
+];
 
 export async function middleware(request: NextRequest) {
   const response = intlMiddleware(request);
