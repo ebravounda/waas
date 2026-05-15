@@ -12,6 +12,7 @@ import { User } from '@/lib/db/schema';
 import useSWR from 'swr';
 import { Suspense } from 'react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -145,6 +146,76 @@ export default function GeneralPage() {
           </form>
         </CardContent>
       </Card>
+
+      <HandoverNotifyCard />
     </section>
+  );
+}
+
+function HandoverNotifyCard() {
+  const { data, mutate } = useSWR<{ notifyAdminPhone: string }>('/api/team/notify-phone', fetcher);
+  const [phone, setPhone] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (data?.notifyAdminPhone != null) setPhone(data.notifyAdminPhone);
+  }, [data?.notifyAdminPhone]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/team/notify-phone', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notifyAdminPhone: phone }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Error');
+      toast.success('Número guardado');
+      mutate();
+    } catch (e: any) {
+      toast.error(e?.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="mt-6" data-testid="handover-notify-card">
+      <CardHeader>
+        <CardTitle>Notificación de handover por WhatsApp</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          Cuando el bot derive una conversación a un humano, te llegará un mensaje
+          de WhatsApp a este número. Dejá vacío para desactivar.
+        </p>
+        <Label htmlFor="notifyAdminPhone" className="mb-2">
+          Número (código de país + número, sin + ni espacios)
+        </Label>
+        <Input
+          id="notifyAdminPhone"
+          placeholder="ej: 5491155667788"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          data-testid="handover-notify-phone-input"
+        />
+        <Button
+          className="mt-4"
+          onClick={handleSave}
+          disabled={saving}
+          data-testid="save-handover-notify-btn"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Guardando
+            </>
+          ) : (
+            'Guardar'
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

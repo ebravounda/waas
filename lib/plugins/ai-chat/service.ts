@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/drizzle';
-import { aiConfigs, aiSessions, chats, messages, evolutionInstances } from '@/lib/db/schema';
+import { aiConfigs, aiSessions, chats, messages, evolutionInstances, teams } from '@/lib/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { OpenAIProvider } from './providers/openai';
 import { GeminiProvider } from './providers/gemini';
@@ -303,9 +303,12 @@ export async function processAIMessage(
                         await createSystemMessage(teamId, chatId, `@@syslog_ai_deactivated|reason=${reason}`);
                         logAIInteraction({ ..._aiLogBase, eventType: 'ai_handover', metadata: { reason: args.reason } });
 
-                        // Optional: notify admin via WhatsApp if HANDOVER_NOTIFY_ADMIN_PHONE is configured
+                        // Optional: notify admin via WhatsApp.
+                        // Priority: team.notifyAdminPhone (set by team owner in /settings/general)
+                        // Fallback: HANDOVER_NOTIFY_ADMIN_PHONE (env, super-admin only).
                         try {
-                          const adminPhone = process.env.HANDOVER_NOTIFY_ADMIN_PHONE;
+                          const teamRow = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
+                          const adminPhone = teamRow?.notifyAdminPhone || process.env.HANDOVER_NOTIFY_ADMIN_PHONE || '';
                           if (adminPhone) {
                             const chatRow = await db.query.chats.findFirst({ where: eq(chats.id, chatId) });
                             const instanceRow = chatRow?.instanceId

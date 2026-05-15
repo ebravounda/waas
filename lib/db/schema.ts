@@ -146,6 +146,7 @@ export const teams = pgTable('teams', {
   subscriptionStatus: varchar('subscription_status', { length: 20 }),
   isCanceled: boolean('is_canceled').default(false),
   trialEndsAt: timestamp('trial_ends_at'),
+  notifyAdminPhone: varchar('notify_admin_phone', { length: 30 }),
 });
 
 export const teamMembers = pgTable('team_members', {
