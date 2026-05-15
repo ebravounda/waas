@@ -98,7 +98,7 @@ export function ContactPicker({ value, onChange }: Props) {
           />
         </div>
         {filtered.length > 0 && (
-          <div className="mt-2 border rounded-md max-h-48 overflow-y-auto divide-y">
+          <div className="mt-2 border rounded-md max-h-56 overflow-y-auto divide-y">
             {filtered.map(c => (
               <button
                 type="button"
@@ -111,7 +111,7 @@ export function ContactPicker({ value, onChange }: Props) {
                   <span className="font-medium">{c.name || c.pushName || 'Sin nombre'}</span>
                   <span className="ml-2 text-xs text-muted-foreground">{c.remoteJid.split('@')[0]}</span>
                 </span>
-                {isPicked(c.remoteJid) && <span className="text-xs text-primary">✓ Agregado</span>}
+                {isPicked(c.remoteJid) && <span className="text-xs text-primary shrink-0 ml-2">✓ Agregado</span>}
               </button>
             ))}
           </div>

@@ -99,7 +99,8 @@ export default function RecurringMessagesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl space-y-6" data-testid="recurring-messages-page">
+    <div className="h-full overflow-y-auto" data-testid="recurring-messages-page">
+      <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Calendar className="w-6 h-6" /> Mensajes Programados</h1>
@@ -267,6 +268,7 @@ export default function RecurringMessagesPage() {
             </div>
           </Card>
         ))}
+      </div>
       </div>
     </div>
   );
