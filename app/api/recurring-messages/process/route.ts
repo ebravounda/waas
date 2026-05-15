@@ -91,9 +91,7 @@ export async function GET(request: Request) {
           .select({
             id: contacts.id,
             name: contacts.name,
-            pushName: contacts.pushName,
-            phone: contacts.phone,
-            email: contacts.email,
+            pushName: chats.pushName,
             chatId: contacts.chatId,
             remoteJid: chats.remoteJid,
           })
@@ -102,7 +100,7 @@ export async function GET(request: Request) {
           .where(eq(contacts.teamId, rule.teamId));
       } else if (rule.targetType === 'tag' && rule.targetValue) {
         targetContacts = await db.execute(sql`
-          SELECT c.id, c.name, c.push_name as "pushName", c.phone, c.email, c.chat_id as "chatId", ch.remote_jid as "remoteJid"
+          SELECT c.id, c.name, ch.push_name as "pushName", c.chat_id as "chatId", ch.remote_jid as "remoteJid"
           FROM contacts c
           LEFT JOIN chats ch ON c.chat_id = ch.id
           INNER JOIN contact_tags ct ON ct.contact_id = c.id
@@ -113,9 +111,7 @@ export async function GET(request: Request) {
           .select({
             id: contacts.id,
             name: contacts.name,
-            pushName: contacts.pushName,
-            phone: contacts.phone,
-            email: contacts.email,
+            pushName: chats.pushName,
             chatId: contacts.chatId,
             remoteJid: chats.remoteJid,
           })
