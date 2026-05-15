@@ -518,10 +518,11 @@ export const recurringMessages = pgTable('recurring_messages', {
   teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
   instanceId: integer('instance_id').references(() => evolutionInstances.id, { onDelete: 'set null' }),
   name: varchar('name', { length: 100 }).notNull(),
-  scheduleType: varchar('schedule_type', { length: 20 }).notNull(), // 'day_of_month' | 'every_n_days' | 'day_of_week'
+  scheduleType: varchar('schedule_type', { length: 20 }).notNull(), // 'day_of_month' | 'every_n_days' | 'day_of_week' | 'once'
   scheduleValue: integer('schedule_value').notNull(), // 1-31 for day_of_month, 1-7 for day_of_week (1=mon), N for every_n_days
   sendHour: integer('send_hour').notNull().default(9), // 0-23
   sendMinute: integer('send_minute').notNull().default(0), // 0-59
+  timezone: varchar('timezone', { length: 50 }).default('UTC'), // IANA tz, e.g. "Europe/Madrid", "America/Santiago"
   messageBody: text('message_body').notNull(),
   mediaUrl: text('media_url'),
   mediaType: varchar('media_type', { length: 20 }),

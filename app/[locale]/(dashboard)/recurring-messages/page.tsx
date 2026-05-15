@@ -42,7 +42,7 @@ export default function RecurringMessagesPage() {
   const { data: instData } = useSWR<any>('/api/instance/list', fetcher);
   const instances: any[] = Array.isArray(instData) ? instData : (instData?.instances || []);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState<any>(() => ({
     name: '',
     instanceId: null,
     scheduleType: 'once',
@@ -50,6 +50,7 @@ export default function RecurringMessagesPage() {
     runOnceAt: '',
     sendHour: 9,
     sendMinute: 0,
+    timezone: (typeof Intl !== 'undefined') ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
     messageBody: 'Hola {{nombre}}, te recordamos que tu pago vence pronto. ¡Gracias!',
     mediaUrl: '',
     mediaType: '',
@@ -58,7 +59,7 @@ export default function RecurringMessagesPage() {
     pickedContacts: [] as PickedContact[],
     delayBetweenMessages: 8,
     isActive: true,
-  });
+  }));
 
   async function handleSubmit() {
     if (!form.name || !form.messageBody) { toast.error('Nombre y mensaje son obligatorios'); return; }
@@ -170,6 +171,28 @@ export default function RecurringMessagesPage() {
                   <span className="self-center">:</span>
                   <Input type="number" min={0} max={59} value={form.sendMinute} onChange={e => setForm({ ...form, sendMinute: parseInt(e.target.value, 10) || 0 })} />
                 </div>
+              </div>
+            )}
+            {form.scheduleType !== 'once' && (
+              <div>
+                <Label>Zona horaria</Label>
+                <Select value={form.timezone} onValueChange={v => setForm({ ...form, timezone: v })}>
+                  <SelectTrigger data-testid="rule-timezone-select"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="Europe/Madrid">Madrid / España</SelectItem>
+                    <SelectItem value="Europe/London">Londres / UK</SelectItem>
+                    <SelectItem value="America/Argentina/Buenos_Aires">Buenos Aires / Argentina</SelectItem>
+                    <SelectItem value="America/Santiago">Santiago / Chile</SelectItem>
+                    <SelectItem value="America/Mexico_City">Ciudad de México</SelectItem>
+                    <SelectItem value="America/Bogota">Bogotá / Colombia</SelectItem>
+                    <SelectItem value="America/Lima">Lima / Perú</SelectItem>
+                    <SelectItem value="America/Sao_Paulo">São Paulo / Brasil</SelectItem>
+                    <SelectItem value="America/Caracas">Caracas / Venezuela</SelectItem>
+                    <SelectItem value="America/New_York">Nueva York / EEUU (Este)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Los Ángeles / EEUU (Oeste)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
             <div>
