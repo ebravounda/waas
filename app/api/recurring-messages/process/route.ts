@@ -128,7 +128,21 @@ export async function GET(request: Request) {
         try {
           const text = interpolate(rule.messageBody, c);
           if (rule.mediaUrl) {
-            await provider.sendMedia(jid, { mediaUrl: rule.mediaUrl, mediaType: (rule.mediaType as any) || 'image', caption: text });
+            try {
+              const mediaRes = await fetch(rule.mediaUrl);
+              const buf = Buffer.from(await mediaRes.arrayBuffer());
+              const mimetype = mediaRes.headers.get('content-type') || 'application/octet-stream';
+              const mediaType = (rule.mediaType as any) || (mimetype.startsWith('video') ? 'video' : mimetype.startsWith('image') ? 'image' : 'document');
+              await provider.sendMedia(jid, {
+                mediaBase64: buf.toString('base64'),
+                mimetype,
+                mediaType,
+                caption: text,
+              });
+            } catch {
+              // Fallback to text if media fetch fails
+              await provider.sendText(jid, { text });
+            }
           } else {
             await provider.sendText(jid, { text });
           }
