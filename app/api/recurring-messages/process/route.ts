@@ -58,9 +58,15 @@ async function handle(request: Request) {
     let sent = 0;
     let errors = 0;
     try {
-      if (!rule.instanceId) continue;
+      if (!rule.instanceId) {
+        results.push({ ruleId: rule.id, name: rule.name, skipped: 'no instanceId' });
+        continue;
+      }
       const instanceArr = await db.select().from(evolutionInstances).where(eq(evolutionInstances.id, rule.instanceId)).limit(1);
-      if (!instanceArr.length) continue;
+      if (!instanceArr.length) {
+        results.push({ ruleId: rule.id, name: rule.name, skipped: 'instance not found', instanceId: rule.instanceId });
+        continue;
+      }
       const provider = await getWhatsAppProvider(instanceArr[0] as any);
 
       // Get target contacts
@@ -163,7 +169,7 @@ async function handle(request: Request) {
         .where(eq(recurringMessages.id, rule.id));
 
       totalSent += sent;
-      results.push({ ruleId: rule.id, name: rule.name, sent, errors, nextRunAt: nextRun ? nextRun.toISOString() : null, once: isOnce });
+      results.push({ ruleId: rule.id, name: rule.name, sent, errors, targetCount: targetContacts.length, targetType: rule.targetType, nextRunAt: nextRun ? nextRun.toISOString() : null, once: isOnce });
     } catch (err: any) {
       results.push({ ruleId: rule.id, error: err.message });
     }
