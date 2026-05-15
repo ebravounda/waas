@@ -269,6 +269,20 @@ export async function processAIMessage(
                         const reason = args.reason ? `: ${args.reason}` : '';
                         await createSystemMessage(teamId, chatId, `@@syslog_ai_deactivated|reason=${reason}`);
                         logAIInteraction({ ..._aiLogBase, eventType: 'ai_handover', metadata: { reason: args.reason } });
+
+                        // Optional: notify admin via WhatsApp if HANDOVER_NOTIFY_ADMIN_JID is configured
+                        try {
+                          const adminJid = process.env.HANDOVER_NOTIFY_ADMIN_JID;
+                          if (adminJid && instance) {
+                            const { getProvider } = await import('@/lib/whatsapp/provider-factory');
+                            const provider = await getProvider(instance as any);
+                            const baseUrl = process.env.BASE_URL || 'https://mitiendapro.com';
+                            const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}\nChat ID: ${chatId}\n\nAbrir → ${baseUrl}/dashboard/chat/${chatId}`;
+                            await provider.sendText(adminJid, { text: notifyText });
+                          }
+                        } catch (notifyErr: any) {
+                          console.error('[handover] failed to notify admin:', notifyErr.message);
+                        }
                     }
 
                     history.push({

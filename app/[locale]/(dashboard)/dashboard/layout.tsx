@@ -264,12 +264,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       mutate('/api/chats');
     };
 
+    const handleHandoverNeeded = (payload: any) => {
+      playNotificationSoundRef.current();
+      const reason = payload?.reason || 'El cliente necesita ayuda';
+      toast.warning('🤝 Un usuario necesita tu ayuda', {
+        description: reason,
+        duration: 10000,
+        action: payload?.chatId ? {
+          label: 'Ver chat',
+          onClick: () => {
+            if (payload.chatId) window.location.href = `/dashboard/chat/${payload.chatId}`;
+          },
+        } : undefined,
+      });
+      mutate('/api/chats');
+    };
+
     channel.bind('chat-list-update', handleChatListUpdate);
     channel.bind('new-message', handleNewMessage);
+    channel.bind('handover-needed', handleHandoverNeeded);
 
     return () => {
       channel.unbind('chat-list-update', handleChatListUpdate);
       channel.unbind('new-message', handleNewMessage);
+      channel.unbind('handover-needed', handleHandoverNeeded);
     };
   }, [teamId, mutate]);
 
