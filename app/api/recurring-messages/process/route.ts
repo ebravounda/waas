@@ -151,7 +151,7 @@ async function handle(request: Request) {
       }
 
       const isOnce = rule.scheduleType === 'once';
-      const nextRun = isOnce ? null : computeNextRun(rule, now);
+      const nextRun = isOnce ? null : computeNextRun(rule as any, now);
       await db.update(recurringMessages)
         .set({
           lastRunAt: now,
