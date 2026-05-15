@@ -244,6 +244,31 @@ export async function processAIMessage(
 
       logAIInteraction({ ..._aiLogBase, eventType: 'ai_response', output: { content: response.content?.substring(0, 500), hasToolCalls: !!response.toolCalls?.length }, metadata: { model: config.model, loopCount }, durationMs: Date.now() - _loopStart });
 
+      // Safety net: if model emitted handover-intent text but did NOT call the tool,
+      // synthesize a tool call so the handover flow always fires. Common with Gemini.
+      if ((!response.toolCalls || response.toolCalls.length === 0) && response.content) {
+          const txt = response.content.toLowerCase();
+          const looksLikeHandover =
+              /trans(f|fi)riendo/.test(txt) ||
+              /transferir(é|e)?\s+(a|tu)/.test(txt) ||
+              /(te\s+)?derivar(é|e|o)\b/.test(txt) ||
+              /conect(a|á)ndote\s+con\s+(un\s+)?(asesor|agente|humano|persona)/.test(txt) ||
+              /(te\s+)?pongo\s+en\s+contacto\s+con\s+(un\s+)?(asesor|agente|humano)/.test(txt) ||
+              /(te\s+)?paso\s+con\s+(un\s+)?(asesor|agente|humano|persona\s+real)/.test(txt);
+          const handoverTool = teamTools.find(t => t.name === 'handover_to_human');
+          if (looksLikeHandover && handoverTool) {
+              console.log('[ai-safety-net] forcing handover_to_human (model said it but did not call the tool)');
+              response.toolCalls = [{
+                  id: `synth_handover_${Date.now()}`,
+                  type: 'function',
+                  function: {
+                      name: 'handover_to_human',
+                      arguments: JSON.stringify({ reason: 'Modelo indicó transferencia en texto sin invocar la tool' })
+                  }
+              }];
+          }
+      }
+
       if (response.toolCalls && response.toolCalls.length > 0) {
           for (const toolCall of response.toolCalls) {
               const toolName = toolCall.function.name;

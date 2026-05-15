@@ -17,7 +17,12 @@ export class GeminiProvider implements AIProvider {
     
     const audioInstruction = "IMPORTANT: You have multimodal capabilities. When you receive an AUDIO file, you must LISTEN to it and extract the user's intent. If the user asks for something in the audio (like a menu, catalog, or action), CALL THE APPROPRIATE TOOL immediately. Do not ask for transcription.";
 
-    const toolUsageInstruction = "TOOLS POLICY: You have access to tools/functions. Use them PROACTIVELY whenever appropriate. In particular: if the user requests to speak with a human, a real person, an agent, support, an advisor; if they express frustration, anger, complaints; if they ask for a refund, cancellation, escalation, account-specific changes; or if you cannot help — you MUST call the `handover_to_human` tool with a short `reason`. Do not ask the user for confirmation, do not say 'transferring you', just call the tool.";
+    const toolUsageInstruction = `TOOLS POLICY (MANDATORY):
+- You have access to function/tool calls. When a tool fits the user's intent, you MUST invoke the tool. NEVER describe the action in plain text.
+- WRONG: replying with "Estoy transfiriendo tu conversación a un humano" / "Te derivo con un agente" / "Conectándote con un asesor".
+- CORRECT: silently invoke the function call \`handover_to_human\` with a "reason" — DO NOT send any text saying you are transferring. The system will handle the user notification automatically.
+- Triggers for \`handover_to_human\`: user asks for human/agent/person/advisor/support/sales/operator; user is angry, frustrated, complains; user requests refund, cancellation, account change, escalation, manager, supervisor; or you cannot help with the question.
+- After calling a tool, do not narrate it. Stay quiet and let the tool's effect speak for itself.`;
 
     this.systemPrompt = config.systemPrompt 
         ? `${config.systemPrompt}\n\n${toolUsageInstruction}\n\n${audioInstruction}` 
