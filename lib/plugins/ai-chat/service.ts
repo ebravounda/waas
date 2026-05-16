@@ -254,6 +254,7 @@ export async function processAIMessage(
 
       // Safety net: if model emitted handover-intent text but did NOT call the tool,
       // synthesize a tool call so the handover flow always fires. Common with Gemini.
+      // Only fire if the session is still active (don't re-trigger after pause).
       if ((!response.toolCalls || response.toolCalls.length === 0) && response.content) {
           const txt = response.content.toLowerCase();
           const looksLikeHandover =
@@ -271,7 +272,7 @@ export async function processAIMessage(
                   type: 'function',
                   function: {
                       name: 'handover_to_human',
-                      arguments: JSON.stringify({ reason: 'Modelo indicó transferencia en texto sin invocar la tool' })
+                      arguments: JSON.stringify({ reason: 'El usuario solicita contactar con un agente humano' })
                   }
               }];
           }
@@ -365,6 +366,10 @@ export async function processAIMessage(
   }
 
   const truncatedHistory = history.slice(-20);
+  await db.update(aiSessions).set({ history: truncatedHistory, updatedAt: new Date() }).where(eq(aiSessions.id, session.id));
+
+  return finalResponseText.replace(/\[SYSTEM_INSTRUCTION\]/g, '').replace(/Output EXACTLY this text: "/g, '').replace(/"$/g, '').trim();
+}st truncatedHistory = history.slice(-20);
   await db.update(aiSessions).set({ history: truncatedHistory, updatedAt: new Date() }).where(eq(aiSessions.id, session.id));
 
   return finalResponseText.replace(/\[SYSTEM_INSTRUCTION\]/g, '').replace(/Output EXACTLY this text: "/g, '').replace(/"$/g, '').trim();
