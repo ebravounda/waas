@@ -369,8 +369,4 @@ export async function processAIMessage(
   await db.update(aiSessions).set({ history: truncatedHistory, updatedAt: new Date() }).where(eq(aiSessions.id, session.id));
 
   return finalResponseText.replace(/\[SYSTEM_INSTRUCTION\]/g, '').replace(/Output EXACTLY this text: "/g, '').replace(/"$/g, '').trim();
-}st truncatedHistory = history.slice(-20);
-  await db.update(aiSessions).set({ history: truncatedHistory, updatedAt: new Date() }).where(eq(aiSessions.id, session.id));
-
-  return finalResponseText.replace(/\[SYSTEM_INSTRUCTION\]/g, '').replace(/Output EXACTLY this text: "/g, '').replace(/"$/g, '').trim();
 }
