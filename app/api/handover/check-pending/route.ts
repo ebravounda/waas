@@ -26,13 +26,24 @@ const HOLD_VARIANTS = [
   'Gracias por escribirnos. Un asesor humano se está conectando para responderte 👨‍💼',
   'Recibimos tu solicitud y un agente está siendo asignado. Te respondemos en unos minutos ⏳',
   'Estamos buscando al agente ideal para tu consulta. Por favor mantente atento al chat 🙏',
-  'Hola 👋 — un compañero del equipo te responderá en breve. Disculpá la demora.',
+  'Hola 👋 — un compañero del equipo te responderá en breve. Disculpa la demora.',
   'Tu mensaje ya está en cola. Un agente real se conectará contigo en pocos minutos 🙌',
   'Gracias por tu paciencia. Estamos buscando un agente disponible para atenderte personalmente.',
 ];
 
+const UNATTENDED_VARIANTS = [
+  'En estos momentos no tenemos agentes disponibles, pero tu mensaje quedó registrado. En cuanto haya alguien libre te responderá por aquí mismo 🙏',
+  'Justo ahora no hay agentes conectados. No te preocupes, tu chat sigue activo y te responderemos en cuanto haya disponibilidad. 💬',
+  'Gracias por tu paciencia. No tenemos agentes disponibles en este momento — te respondemos por este chat en cuanto sea posible.',
+  'Disculpa la demora, ahora mismo no hay agentes disponibles. Tu mensaje ya está en nuestra bandeja y te respondemos pronto por aquí. 🙌',
+];
+
 function pickHold(seed: number): string {
   return HOLD_VARIANTS[seed % HOLD_VARIANTS.length];
+}
+
+function pickUnattended(seed: number): string {
+  return UNATTENDED_VARIANTS[seed % UNATTENDED_VARIANTS.length];
 }
 
 async function handleRequest(request: Request) {
@@ -117,31 +128,42 @@ async function handleRequest(request: Request) {
 
       const provider = await getWhatsAppProvider(instance[0] as any);
 
-      // STAGE 2: 5 minutes elapsed and we already sent the hold message — reactivate AI
+      // STAGE 2: 5 minutes elapsed and we already sent the hold message —
+      // send an "unattended" notice but KEEP the session paused so the AI
+      // does NOT take over again. The chat stays in queue for a human.
       if (s.handoverFallbackSent && s.pausedAt && new Date(s.pausedAt) < reactivateCutoff) {
-        await db.update(aiSessions)
-          .set({ status: 'active', updatedAt: new Date() })
-          .where(eq(aiSessions.id, s.sessionId));
+        // Only send the unattended notice once per session (track via handoverFallbackSent boolean
+        // would overwrite — we use a small heuristic: only fire if last system message older than X).
+        // Simplest: write a system message and only send unattended-message if not yet sent.
+        const alreadyUnattended = await db
+          .select({ id: messages.id })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.chatId, s.chatId),
+              eq(messages.isInternal, true),
+              sql`${messages.content} LIKE '@@syslog_ai_unattended%'`
+            )
+          )
+          .limit(1);
 
-        await createSystemMessage(
-          s.teamId,
-          s.chatId,
-          `@@syslog_ai_reactivated|reason=Sin respuesta humana en ${REACTIVATE_DELAY_MIN} minutos`
-        );
-
-        // Emit pusher event so dashboard can surface persistent notification
-        try {
-          await pusherServer.trigger(`team-${s.teamId}`, 'chat-status-update', {
-            chatId: s.chatId, type: 'ai', status: 'active'
-          });
-          await pusherServer.trigger(`team-${s.teamId}`, 'handover-unattended', {
-            chatId: s.chatId,
-            minutes: REACTIVATE_DELAY_MIN,
-            timestamp: new Date().toISOString(),
-          });
-        } catch {}
-
-        reactivated++;
+        if (alreadyUnattended.length === 0) {
+          const text = pickUnattended(s.sessionId + Math.floor(now / 60000));
+          await provider.sendText(chatInfo[0].remoteJid, { text });
+          await createSystemMessage(
+            s.teamId,
+            s.chatId,
+            `@@syslog_ai_unattended|reason=Sin respuesta humana en ${REACTIVATE_DELAY_MIN} minutos`
+          );
+          try {
+            await pusherServer.trigger(`team-${s.teamId}`, 'handover-unattended', {
+              chatId: s.chatId,
+              minutes: REACTIVATE_DELAY_MIN,
+              timestamp: new Date().toISOString(),
+            });
+          } catch {}
+          reactivated++;
+        }
         continue;
       }
 

@@ -304,6 +304,17 @@ export async function processAIMessage(
                         await createSystemMessage(teamId, chatId, `@@syslog_ai_deactivated|reason=${reason}`);
                         logAIInteraction({ ..._aiLogBase, eventType: 'ai_handover', metadata: { reason: args.reason } });
 
+                        // Immediate handoff message to the user so they know they were heard.
+                        // Use finalResponseText so the existing send-message pipeline ships it.
+                        const handoffVariants = [
+                          'Perfecto, te paso con un agente humano. En unos minutos te respondemos por aquí. 🙌',
+                          'Genial, derivo tu consulta a un agente. Te respondemos en breve por este mismo chat. 😊',
+                          'Te pongo con un agente del equipo. Quédate en el chat, te respondemos enseguida.',
+                          'Marco tu chat para que lo atienda un agente. Te respondemos por aquí mismo en unos minutos. 🙌',
+                        ];
+                        const pick = handoffVariants[Math.floor(Math.random() * handoffVariants.length)];
+                        finalResponseText = pick;
+
                         // Optional: notify admin via WhatsApp.
                         // Priority: team.notifyAdminPhone (set by team owner in /settings/general)
                         // Fallback: HANDOVER_NOTIFY_ADMIN_PHONE (env, super-admin only).
@@ -335,6 +346,9 @@ export async function processAIMessage(
                         } catch (notifyErr: any) {
                           console.error('[handover] failed to notify admin:', notifyErr?.message);
                         }
+
+                        // Stop the AI loop immediately. Avoid spamming admin or re-triggering safety-net.
+                        keepProcessing = false;
                     }
 
                     history.push({
