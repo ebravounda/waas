@@ -129,41 +129,36 @@ async function handleRequest(request: Request) {
       const provider = await getWhatsAppProvider(instance[0] as any);
 
       // STAGE 2: 5 minutes elapsed and we already sent the hold message —
-      // send an "unattended" notice but KEEP the session paused so the AI
-      // does NOT take over again. The chat stays in queue for a human.
+      // notify the user that no agents are available right now AND reactivate
+      // the AI so it keeps the conversation alive. The chat also stays flagged
+      // in the dashboard via the handover-unattended Pusher event so the team
+      // sees the escalation persistently.
       if (s.handoverFallbackSent && s.pausedAt && new Date(s.pausedAt) < reactivateCutoff) {
-        // Only send the unattended notice once per session (track via handoverFallbackSent boolean
-        // would overwrite — we use a small heuristic: only fire if last system message older than X).
-        // Simplest: write a system message and only send unattended-message if not yet sent.
-        const alreadyUnattended = await db
-          .select({ id: messages.id })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.chatId, s.chatId),
-              eq(messages.isInternal, true),
-              sql`${messages.content} LIKE '@@syslog_ai_unattended%'`
-            )
-          )
-          .limit(1);
+        const text = pickUnattended(s.sessionId + Math.floor(now / 60000));
+        await provider.sendText(chatInfo[0].remoteJid, { text });
 
-        if (alreadyUnattended.length === 0) {
-          const text = pickUnattended(s.sessionId + Math.floor(now / 60000));
-          await provider.sendText(chatInfo[0].remoteJid, { text });
-          await createSystemMessage(
-            s.teamId,
-            s.chatId,
-            `@@syslog_ai_unattended|reason=Sin respuesta humana en ${REACTIVATE_DELAY_MIN} minutos`
-          );
-          try {
-            await pusherServer.trigger(`team-${s.teamId}`, 'handover-unattended', {
-              chatId: s.chatId,
-              minutes: REACTIVATE_DELAY_MIN,
-              timestamp: new Date().toISOString(),
-            });
-          } catch {}
-          reactivated++;
-        }
+        await db.update(aiSessions)
+          .set({ status: 'active', updatedAt: new Date() })
+          .where(eq(aiSessions.id, s.sessionId));
+
+        await createSystemMessage(
+          s.teamId,
+          s.chatId,
+          `@@syslog_ai_reactivated|reason=Sin respuesta humana en ${REACTIVATE_DELAY_MIN} minutos`
+        );
+
+        try {
+          await pusherServer.trigger(`team-${s.teamId}`, 'chat-status-update', {
+            chatId: s.chatId, type: 'ai', status: 'active'
+          });
+          await pusherServer.trigger(`team-${s.teamId}`, 'handover-unattended', {
+            chatId: s.chatId,
+            minutes: REACTIVATE_DELAY_MIN,
+            timestamp: new Date().toISOString(),
+          });
+        } catch {}
+
+        reactivated++;
         continue;
       }
 
