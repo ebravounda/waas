@@ -292,13 +292,17 @@ export async function processAIMessage(
                     logAIInteraction({ ..._aiLogBase, eventType: 'ai_tool_call', input: { tool: toolName, args }, output: { result: JSON.stringify(result).substring(0, 500) }, durationMs: Date.now() - _toolStart });
 
                     if (tool.name === 'handover_to_human') {
+                        // Resolve remoteJid up front (used by both Pusher and admin WA notify)
+                        const chatRow = await db.query.chats.findFirst({ where: eq(chats.id, chatId) });
+                        const customerJid = chatRow?.remoteJid || '';
+
                         await db.update(aiSessions).set({ status: 'paused', handoverFallbackSent: false }).where(eq(aiSessions.id, session.id));
                         await pusherServer.trigger(`team-${teamId}`, 'chat-status-update', {
                             chatId, type: 'ai', status: 'paused'
                         });
                         // Trigger handover-needed alert for dashboard toast
                         await pusherServer.trigger(`team-${teamId}`, 'handover-needed', {
-                            chatId, reason: args.reason || 'Customer requested human help', timestamp: new Date().toISOString()
+                            chatId, jid: customerJid, reason: args.reason || 'Customer requested human help', timestamp: new Date().toISOString()
                         });
                         const reason = args.reason ? `: ${args.reason}` : '';
                         await createSystemMessage(teamId, chatId, `@@syslog_ai_deactivated|reason=${reason}`);
@@ -318,14 +322,13 @@ export async function processAIMessage(
                           const teamRow = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
                           const adminPhone = teamRow?.notifyAdminPhone || process.env.HANDOVER_NOTIFY_ADMIN_PHONE || '';
                           if (adminPhone) {
-                            const chatRow = await db.query.chats.findFirst({ where: eq(chats.id, chatId) });
                             const instanceRow = chatRow?.instanceId
                               ? await db.query.evolutionInstances.findFirst({ where: eq(evolutionInstances.id, chatRow.instanceId) })
                               : null;
                             if (instanceRow?.accessToken && instanceRow?.instanceName) {
                               const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
-                              const link = baseUrl ? `\n\nAbrir → ${baseUrl}/dashboard/chat/${chatId}` : '';
-                              const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}\nChat ID: ${chatId}${link}`;
+                              const link = baseUrl && customerJid ? `\n\nAbrir → ${baseUrl}/dashboard/chat/${encodeURIComponent(customerJid)}` : '';
+                              const notifyText = `🔔 *Nueva conversación esperando agente*\n\nMotivo: ${args.reason || 'Cliente pidió ayuda humana'}${link}`;
                               await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceRow.instanceName}`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'apikey': instanceRow.accessToken },

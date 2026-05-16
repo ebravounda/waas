@@ -270,10 +270,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       toast.warning('🤝 Un usuario necesita tu ayuda', {
         description: reason,
         duration: 10000,
-        action: payload?.chatId ? {
+        action: (payload?.jid || payload?.chatId) ? {
           label: 'Ver chat',
           onClick: () => {
-            if (payload.chatId) window.location.href = `/dashboard/chat/${payload.chatId}`;
+            const target = payload.jid ? encodeURIComponent(payload.jid) : payload.chatId;
+            window.location.href = `/dashboard/chat/${target}`;
           },
         } : undefined,
       });
@@ -285,10 +286,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       toast.error('⚠️ Chat sin atender — IA reactivada', {
         description: `Nadie respondió en ${payload?.minutes || 5} min. El bot retomó la conversación.`,
         duration: 15000,
-        action: payload?.chatId ? {
+        action: (payload?.jid || payload?.chatId) ? {
           label: 'Ver chat',
           onClick: () => {
-            if (payload.chatId) window.location.href = `/dashboard/chat/${payload.chatId}`;
+            const target = payload.jid ? encodeURIComponent(payload.jid) : payload.chatId;
+            window.location.href = `/dashboard/chat/${target}`;
           },
         } : undefined,
       });

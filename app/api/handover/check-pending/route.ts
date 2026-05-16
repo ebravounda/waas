@@ -153,6 +153,7 @@ async function handleRequest(request: Request) {
           });
           await pusherServer.trigger(`team-${s.teamId}`, 'handover-unattended', {
             chatId: s.chatId,
+            jid: chatInfo[0].remoteJid,
             minutes: REACTIVATE_DELAY_MIN,
             timestamp: new Date().toISOString(),
           });
