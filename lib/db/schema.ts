@@ -513,6 +513,69 @@ export const aiSessionsRelations = relations(aiSessions, ({ one }) => ({
 }));
 
 // Recurring scheduled messages (e.g., monthly payment reminders)
+// ─────────────────────────────────────────────────────────────────────────────
+// Bookings (multi-business: barbershops, hostels, etc.)
+// Each "business" belongs to a team and has its own subdomain.
+// ─────────────────────────────────────────────────────────────────────────────
+export const businesses = pgTable('businesses', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  slug: varchar('slug', { length: 60 }).notNull().unique(),
+  name: varchar('name', { length: 120 }).notNull(),
+  type: varchar('type', { length: 20 }).notNull().default('barbershop'), // 'barbershop' | 'hostel' | 'generic'
+  timezone: varchar('timezone', { length: 50 }).notNull().default('UTC'),
+  address: text('address'),
+  phone: varchar('phone', { length: 30 }),
+  logoUrl: text('logo_url'),
+  primaryColor: varchar('primary_color', { length: 9 }).default('#0ea5e9'),
+  description: text('description'),
+  bookingNoticeMinutes: integer('booking_notice_minutes').default(60), // min lead-time to book
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const businessServices = pgTable('business_services', {
+  id: serial('id').primaryKey(),
+  businessId: integer('business_id').notNull().references(() => businesses.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(),
+  durationMin: integer('duration_min').notNull().default(30),
+  priceCents: integer('price_cents').default(0),
+  currency: varchar('currency', { length: 3 }).default('EUR'),
+  description: text('description'),
+  isActive: boolean('is_active').default(true),
+  sortOrder: integer('sort_order').default(0),
+});
+
+export const businessHours = pgTable('business_hours', {
+  id: serial('id').primaryKey(),
+  businessId: integer('business_id').notNull().references(() => businesses.id, { onDelete: 'cascade' }),
+  weekday: integer('weekday').notNull(), // 0=Sunday..6=Saturday
+  openTime: varchar('open_time', { length: 5 }).notNull().default('09:00'), // HH:MM
+  closeTime: varchar('close_time', { length: 5 }).notNull().default('18:00'),
+  isClosed: boolean('is_closed').default(false),
+});
+
+export const appointments = pgTable('appointments', {
+  id: serial('id').primaryKey(),
+  businessId: integer('business_id').notNull().references(() => businesses.id, { onDelete: 'cascade' }),
+  serviceId: integer('service_id').references(() => businessServices.id, { onDelete: 'set null' }),
+  customerName: varchar('customer_name', { length: 120 }).notNull(),
+  customerPhone: varchar('customer_phone', { length: 30 }).notNull(),
+  customerEmail: varchar('customer_email', { length: 120 }),
+  startAt: timestamp('start_at').notNull(),
+  endAt: timestamp('end_at').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('confirmed'),
+  // confirmed | completed | cancelled | no_show | checked_in | checked_out
+  notes: text('notes'),
+  reminder3hSent: boolean('reminder_3h_sent').default(false),
+  reminder24hSent: boolean('reminder_24h_sent').default(false),
+  thankYouSent: boolean('thank_you_sent').default(false),
+  source: varchar('source', { length: 20 }).default('online'), // online | manual
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+
 export const recurringMessages = pgTable('recurring_messages', {
   id: serial('id').primaryKey(),
   teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
