@@ -3,6 +3,7 @@ import { aiConfigs, aiSessions, chats, messages, evolutionInstances, teams } fro
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { OpenAIProvider } from './providers/openai';
 import { GeminiProvider } from './providers/gemini';
+import { GroqProvider } from './providers/groq';
 import { logAIInteraction } from '@/lib/audit/logger';
 import { getDynamicTools } from './tools';
 import { AIMessage, AIProvider } from './types';
@@ -193,12 +194,14 @@ export async function processAIMessage(
     provider = new OpenAIProvider(commonConfig);
   } else if (config.provider === 'gemini') {
     provider = new GeminiProvider(commonConfig);
+  } else if (config.provider === 'groq') {
+    provider = new GroqProvider(commonConfig);
   } else {
     throw new Error(`Provider ${config.provider} not implemented yet`);
   }
 
   let finalInput = userMessage;
-  if (config.provider === 'openai' && audioUrl) {
+  if ((config.provider === 'openai' || config.provider === 'groq') && audioUrl) {
       try {
           const transcription = await provider.transcribeAudio(audioUrl);
           if (transcription) {
@@ -206,7 +209,7 @@ export async function processAIMessage(
              audioUrl = null; 
           }
       } catch (e) {
-          console.error("[Service] OpenAI Transcription failed", e);
+          console.error(`[Service] ${config.provider} Transcription failed`, e);
       }
   }
 
@@ -220,7 +223,7 @@ export async function processAIMessage(
       return m;
   });
 
-  if (history.length === 0 && config.systemPrompt && config.provider === 'openai') {
+  if (history.length === 0 && config.systemPrompt && (config.provider === 'openai' || config.provider === 'groq')) {
       history.push({ role: 'system', content: config.systemPrompt });
   }
 

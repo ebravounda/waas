@@ -17,7 +17,7 @@ export type AiActionState = {
 
 const aiConfigSchema = z.object({
   isActive: z.boolean(),
-  provider: z.enum(['openai', 'gemini']),
+  provider: z.enum(['openai', 'gemini', 'groq']),
   model: z.string().min(1),
   apiKey: z.string().min(1, "API Key is required"),
   systemPrompt: z.string().optional(),

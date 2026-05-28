@@ -37,7 +37,14 @@ const MODELS = {
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
     { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (preview)' },
-  ]
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile (Recommended)' },
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant (fastest)' },
+    { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B Versatile' },
+    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (32k context)' },
+    { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT' },
+  ],
 };
 
 const initialState: AiActionState = {
@@ -60,7 +67,7 @@ export default function AiSettingsPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [isActive, setIsActive] = useState(false);
-  const [provider, setProvider] = useState<'openai' | 'gemini'>('gemini');
+  const [provider, setProvider] = useState<'openai' | 'gemini' | 'groq'>('gemini');
   const [model, setModel] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -76,7 +83,7 @@ export default function AiSettingsPage() {
         const config = await getAiConfig();
         if (config) {
             setIsActive(config.isActive);
-            setProvider(config.provider as 'openai' | 'gemini');
+            setProvider(config.provider as 'openai' | 'gemini' | 'groq');
             setModel(config.model);
             setApiKey(config.apiKey); 
             setSystemPrompt(config.systemPrompt || '');
@@ -221,6 +228,7 @@ export default function AiSettingsPage() {
                                     <SelectContent>
                                         <SelectItem value="gemini">{t('google_gemini_select')}</SelectItem>
                                         <SelectItem value="openai">{t('openai_chatgpt_select')}</SelectItem>
+                                        <SelectItem value="groq">Groq (Llama 3.3 / Mixtral)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -246,7 +254,7 @@ export default function AiSettingsPage() {
                                     type="password" 
                                     value={apiKey} 
                                     onChange={(e) => setApiKey(e.target.value)} 
-                                    placeholder={provider === 'openai' ? 'sk-...' : 'AIza...'}
+                                    placeholder={provider === 'openai' ? 'sk-...' : provider === 'groq' ? 'gsk_...' : 'AIza...'}
                                 />
                             </div>
                         </CardContent>
