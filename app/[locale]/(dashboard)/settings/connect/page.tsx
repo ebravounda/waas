@@ -670,7 +670,11 @@ function InstanceCard({ details, mutateDetails, allInstances }: { details: Insta
                 </>
             )}
 
-            <Button variant="ghost" size="sm" onClick={() => handleAction('delete')} disabled={actionLoading !== null} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-3 shrink-0">
+            {isMetaCloud && (
+                <MetaRegisterButton instanceId={details.dbId} onRegistered={mutateDetails} />
+            )}
+
+            <Button variant="ghost" size="sm" onClick={() => handleAction('delete')} disabled={actionLoading !== null} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-3 shrink-0" data-testid={`delete-instance-${details.dbId}`}>
                 {actionLoading === 'delete' ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
             </Button>
           </div>
@@ -947,5 +951,103 @@ export default function ConnectInstancePage() {
              </div>
         )}
     </div>
+  );
+}
+
+// ─── MetaRegisterButton ───
+// Meta requiere que cada número WABA sea registrado (POST {phone_number_id}/register)
+// con un PIN de 6 dígitos antes de poder enviar mensajes. Este botón lo hace desde la UI.
+function MetaRegisterButton({ instanceId, onRegistered }: { instanceId: number; onRegistered: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null); setHint(null);
+    if (!/^\d{6}$/.test(pin)) { setError('El PIN debe tener exactamente 6 dígitos'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/instance/meta-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceId, pin }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Error registrando el número');
+        if (data.hint) setHint(data.hint);
+        return;
+      }
+      toast.success('Número registrado correctamente en Meta 🎉');
+      setOpen(false);
+      setPin('');
+      onRegistered();
+    } catch (e: any) {
+      setError(e?.message || 'Error');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline" size="sm"
+          className="flex-1 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 dark:hover:bg-violet-950/30 dark:hover:text-violet-400 dark:hover:border-violet-800"
+          data-testid={`meta-register-btn-${instanceId}`}
+        >
+          <Zap className="h-3.5 w-3.5 mr-2" /> Registrar número
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Registrar número en Meta</DialogTitle>
+          <DialogDescription>
+            Meta requiere registrar cada número WABA antes de que pueda enviar mensajes. Elige un PIN de 6 dígitos (guárdalo — se pide en cambios futuros de plataforma).
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4 pt-2">
+          <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTitle className="text-amber-800 dark:text-amber-300 text-sm">Importante</AlertTitle>
+            <AlertDescription className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+              Si el número está registrado en un móvil con WhatsApp activo, primero <strong>desactiva la verificación en dos pasos</strong> desde la app. De lo contrario Meta rechazará el registro.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-2">
+            <Label>PIN de 6 dígitos *</Label>
+            <Input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
+              autoFocus
+              data-testid="meta-register-pin-input"
+            />
+            <p className="text-xs text-muted-foreground">Este PIN es tuyo — no es de Meta. Elige uno fácil de recordar (no uses fechas obvias).</p>
+          </div>
+
+          {error && (
+            <div className="text-sm bg-destructive/10 text-destructive p-3 rounded space-y-1">
+              <p>{error}</p>
+              {hint && <p className="text-xs text-foreground/80 italic">💡 {hint}</p>}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>Cancelar</Button>
+            <Button type="submit" disabled={loading} data-testid="meta-register-submit">
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {loading ? 'Registrando...' : 'Registrar en Meta'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
