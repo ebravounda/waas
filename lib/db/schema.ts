@@ -279,6 +279,7 @@ export const evolutionInstances = pgTable('evolution_instances', {
     metaPhoneNumberId: text('meta_phone_number_id'),
     metaWabaId: text('meta_waba_id'),
     metaAppId: text('meta_app_id'),
+    metaAppSecret: text('meta_app_secret'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },

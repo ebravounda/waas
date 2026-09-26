@@ -53,6 +53,9 @@ function ConnectInstanceForm({ onSuccess, onCancel }: { onSuccess: () => void; o
   const [metaToken, setMetaToken] = useState("");
   const [metaBusinessId, setMetaBusinessId] = useState("");
   const [metaPhoneNumberId, setMetaPhoneNumberId] = useState("");
+  const [metaWabaId, setMetaWabaId] = useState("");
+  const [metaAppId, setMetaAppId] = useState("");
+  const [metaAppSecret, setMetaAppSecret] = useState("");
 
   const [rejectCalls, setRejectCalls] = useState(false);
   const [ignoreGroups, setIgnoreGroups] = useState(true);
@@ -168,20 +171,38 @@ function ConnectInstanceForm({ onSuccess, onCancel }: { onSuccess: () => void; o
     setError(null);
 
     try {
+      // ─── WHATSAPP-BUSINESS: connect DIRECTLY to Meta Cloud API (not via Evolution)
+      if (connectionType === 'WHATSAPP-BUSINESS') {
+        const response = await fetch('/api/instance/meta-manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instanceName,
+            metaToken,
+            metaPhoneNumberId,
+            metaWabaId,
+            metaBusinessId,
+            metaAppId,
+            metaAppSecret,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || t('failed_to_connect_toast'));
+        toast.success(t('instance_created_success_toast'));
+        onSuccess();
+        return;
+      }
+
+      // ─── WHATSAPP-BAILEYS (Evolution / QR)
       const payload = {
         instanceName,
         integration: connectionType,
-        ...(connectionType === "WHATSAPP-BAILEYS"
-            ? {
-                number,
-                rejectCalls,
-                ignoreGroups,
-                alwaysOnline,
-                readMessages,
-                readStatus
-              }
-            : { metaToken, metaBusinessId, metaPhoneNumberId }
-        )
+        number,
+        rejectCalls,
+        ignoreGroups,
+        alwaysOnline,
+        readMessages,
+        readStatus,
       };
 
       const response = await fetch('/api/instance/setup', {
@@ -254,25 +275,43 @@ function ConnectInstanceForm({ onSuccess, onCancel }: { onSuccess: () => void; o
             {showEvoTabs && <TabsContent value="WHATSAPP-BUSINESS" className="space-y-4 pt-4">
                 <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
                     <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertTitle className="text-blue-800 dark:text-blue-300">{t('meta_configuration_title')}</AlertTitle>
-                    <AlertDescription className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-                        {t('meta_configuration_desc')}<br/>
-                        <code className="bg-black/10 dark:bg-black/30 px-1 rounded select-all">{process.env.NEXT_PUBLIC_EVOLUTION_WEBHOOK_URL+'/webhook/meta' || ''}</code><br/>
-                        {t('verify_token_label')} <code className="bg-black/10 dark:bg-black/30 px-1 rounded select-all">{process.env.NEXT_PUBLIC_EVOLUTION_WEBHOOK_TOKEN || ''}</code>
+                    <AlertTitle className="text-blue-800 dark:text-blue-300">Meta Cloud API (Manual)</AlertTitle>
+                    <AlertDescription className="text-xs text-blue-700 dark:text-blue-400 mt-1 space-y-1">
+                        <p>Conecta tu propia WhatsApp Business Account con credenciales de Meta Developers.</p>
+                        <p>📍 En Meta configura este webhook:</p>
+                        <p><strong>URL:</strong> <code className="bg-black/10 dark:bg-black/30 px-1 rounded select-all">{typeof window !== 'undefined' ? `${window.location.origin}/api/webhook/meta-cloud` : ''}</code></p>
+                        <p><strong>Verify token:</strong> <code className="bg-black/10 dark:bg-black/30 px-1 rounded select-all">{process.env.NEXT_PUBLIC_EVOLUTION_WEBHOOK_TOKEN || 'define META_WEBHOOK_VERIFY_TOKEN en .env'}</code></p>
+                        <p>Subscríbete al campo <code>messages</code> en tu WABA.</p>
                     </AlertDescription>
                 </Alert>
 
                 <div className="space-y-2">
-                    <Label>{t('phone_number_id_label')}</Label>
-                    <Input value={metaPhoneNumberId} onChange={(e) => setMetaPhoneNumberId(e.target.value)} placeholder={t('phone_number_id_placeholder')} required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
+                    <Label>Phone Number ID *</Label>
+                    <Input value={metaPhoneNumberId} onChange={(e) => setMetaPhoneNumberId(e.target.value)} placeholder="Ej: 105954398765432" required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
+                    <p className="text-xs text-muted-foreground">En Meta → WhatsApp → API Setup → "From Phone Number ID"</p>
                 </div>
                 <div className="space-y-2">
-                    <Label>{t('business_account_id_label')}</Label>
-                    <Input value={metaBusinessId} onChange={(e) => setMetaBusinessId(e.target.value)} placeholder={t('business_account_id_placeholder')} required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
+                    <Label>WABA ID *</Label>
+                    <Input value={metaWabaId} onChange={(e) => setMetaWabaId(e.target.value)} placeholder="WhatsApp Business Account ID" required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
+                    <p className="text-xs text-muted-foreground">En Meta → WhatsApp → API Setup → "WhatsApp Business Account ID"</p>
                 </div>
                 <div className="space-y-2">
-                    <Label>{t('system_user_token_label')}</Label>
-                    <Input type="password" value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder={t('system_user_token_placeholder')} required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
+                    <Label>Business Account ID <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input value={metaBusinessId} onChange={(e) => setMetaBusinessId(e.target.value)} placeholder="Business Manager ID" disabled={isLoading && !error}/>
+                </div>
+                <div className="space-y-2">
+                    <Label>App ID <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input value={metaAppId} onChange={(e) => setMetaAppId(e.target.value)} placeholder="Meta App ID" disabled={isLoading && !error}/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Access Token permanente *</Label>
+                    <Input type="password" value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="EAAxxxxx... (System User token)" required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
+                    <p className="text-xs text-muted-foreground">Genéralo en Business Settings → System Users → Access Token</p>
+                </div>
+                <div className="space-y-2">
+                    <Label>App Secret <span className="text-xs text-orange-600">(recomendado — para verificación HMAC)</span></Label>
+                    <Input type="password" value={metaAppSecret} onChange={(e) => setMetaAppSecret(e.target.value)} placeholder="Meta App Secret" disabled={isLoading && !error}/>
+                    <p className="text-xs text-muted-foreground">Sin App Secret los webhooks entrantes serán rechazados por seguridad. Consíguelo en tu Meta App → Settings → Basic → App Secret</p>
                 </div>
             </TabsContent>}
 
