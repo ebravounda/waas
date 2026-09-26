@@ -278,40 +278,86 @@ function ConnectInstanceForm({ onSuccess, onCancel }: { onSuccess: () => void; o
                     <AlertTitle className="text-blue-800 dark:text-blue-300">Meta Cloud API (Manual)</AlertTitle>
                     <AlertDescription className="text-xs text-blue-700 dark:text-blue-400 mt-1 space-y-1">
                         <p>Conecta tu propia WhatsApp Business Account con credenciales de Meta Developers.</p>
-                        <p>📍 En Meta configura este webhook:</p>
+                        <p className="pt-2">📍 <strong>En Meta configura este webhook</strong> (una sola vez):</p>
                         <p><strong>URL:</strong> <code className="bg-black/10 dark:bg-black/30 px-1 rounded select-all">{typeof window !== 'undefined' ? `${window.location.origin}/api/webhook/meta-cloud` : ''}</code></p>
                         <p><strong>Verify token:</strong> <code className="bg-black/10 dark:bg-black/30 px-1 rounded select-all">{process.env.NEXT_PUBLIC_EVOLUTION_WEBHOOK_TOKEN || 'define META_WEBHOOK_VERIFY_TOKEN en .env'}</code></p>
-                        <p>Subscríbete al campo <code>messages</code> en tu WABA.</p>
+                        <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" className="text-blue-700 dark:text-blue-300 underline inline-flex items-center gap-1 mt-1">
+                            Ir a Meta Developers <ExternalLink className="h-3 w-3" />
+                        </a>
                     </AlertDescription>
                 </Alert>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                     <Label>Phone Number ID *</Label>
                     <Input value={metaPhoneNumberId} onChange={(e) => setMetaPhoneNumberId(e.target.value)} placeholder="Ej: 105954398765432" required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
-                    <p className="text-xs text-muted-foreground">En Meta → WhatsApp → API Setup → "From Phone Number ID"</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                        <span>📱 Meta Developers → tu App → WhatsApp → API Setup → "From Phone Number ID"</span>
+                        <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-0.5 whitespace-nowrap">
+                            Abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                    </p>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-1.5">
                     <Label>WABA ID *</Label>
                     <Input value={metaWabaId} onChange={(e) => setMetaWabaId(e.target.value)} placeholder="WhatsApp Business Account ID" required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
-                    <p className="text-xs text-muted-foreground">En Meta → WhatsApp → API Setup → "WhatsApp Business Account ID"</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                        <span>💬 Business Manager → Cuentas → Cuentas de WhatsApp → tu cuenta → ID arriba</span>
+                        <a href="https://business.facebook.com/wa/manage/accounts/" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-0.5 whitespace-nowrap">
+                            Abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                    </p>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-1.5">
                     <Label>Business Account ID <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                     <Input value={metaBusinessId} onChange={(e) => setMetaBusinessId(e.target.value)} placeholder="Business Manager ID" disabled={isLoading && !error}/>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                        <span>🏢 Business Manager → Información del negocio → "ID del negocio"</span>
+                        <a href="https://business.facebook.com/settings/info" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-0.5 whitespace-nowrap">
+                            Abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                    </p>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-1.5">
                     <Label>App ID <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                     <Input value={metaAppId} onChange={(e) => setMetaAppId(e.target.value)} placeholder="Meta App ID" disabled={isLoading && !error}/>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                        <span>🔧 Meta Developers → tu App → App Settings → Basic → App ID</span>
+                        <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-0.5 whitespace-nowrap">
+                            Abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                    </p>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-1.5">
                     <Label>Access Token permanente *</Label>
                     <Input type="password" value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="EAAxxxxx... (System User token)" required={connectionType === "WHATSAPP-BUSINESS"} disabled={isLoading && !error}/>
-                    <p className="text-xs text-muted-foreground">Genéralo en Business Settings → System Users → Access Token</p>
+                    <div className="text-xs text-muted-foreground space-y-1 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
+                        <p className="font-medium text-amber-800 dark:text-amber-300">🔑 Cómo generar un token PERMANENTE:</p>
+                        <p>1. Ve a Business Manager → Usuarios del sistema</p>
+                        <p>2. Crea uno con rol "Administrador" (o usa uno existente)</p>
+                        <p>3. Agrégale como activos: tu App + tu WABA (Control total)</p>
+                        <p>4. Clic "Generar token nuevo" → elige tu App → <strong>vencimiento: Nunca</strong></p>
+                        <p>5. Permisos: <code>whatsapp_business_management</code> + <code>whatsapp_business_messaging</code></p>
+                        <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener" className="text-amber-800 dark:text-amber-300 underline inline-flex items-center gap-0.5 pt-1 font-medium">
+                            Abrir Usuarios del sistema <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <p className="pt-1">💡 <em>Token temporal de 24h (solo para probar): API Setup → caja azul "Temporary access token"</em></p>
+                    </div>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-1.5">
                     <Label>App Secret <span className="text-xs text-orange-600">(recomendado — para verificación HMAC)</span></Label>
                     <Input type="password" value={metaAppSecret} onChange={(e) => setMetaAppSecret(e.target.value)} placeholder="Meta App Secret" disabled={isLoading && !error}/>
-                    <p className="text-xs text-muted-foreground">Sin App Secret los webhooks entrantes serán rechazados por seguridad. Consíguelo en tu Meta App → Settings → Basic → App Secret</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                        <span>🔐 Meta Developers → tu App → App Settings → Basic → App Secret → "Show"</span>
+                        <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-0.5 whitespace-nowrap">
+                            Abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">Sin App Secret los webhooks entrantes serán rechazados por seguridad.</p>
                 </div>
             </TabsContent>}
 
@@ -915,7 +961,7 @@ export default function ConnectInstancePage() {
                         <Plus className="h-5 w-5 mr-2"/> {t('add_connection_btn')}
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px]">
+                <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-xl">{t('connect_new_instance_title')}</DialogTitle>
                         <DialogDescription>
